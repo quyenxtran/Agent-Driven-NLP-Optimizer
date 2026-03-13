@@ -15,8 +15,12 @@ def add_optimization(
     tstep_bounds=(8.0, 12.0),
     ffeed_bounds=(1.0, 3.0),
     fdes_bounds=None,
+    fex_bounds=None,
+    fraf_bounds=None,
+    f1_bounds=None,
     fex_fixed=None,
     f1_min: float = 1.5,
+    f1_max: float = None,
 ):
     m.UF.free()
     m.UD.free()
@@ -38,6 +42,18 @@ def add_optimization(
         ud_ub = fdes_bounds[1] / (inputs.area * inputs.eb)
         m.UD.setlb(ud_lb)
         m.UD.setub(ud_ub)
+
+    if fex_bounds is not None:
+        ue_lb = fex_bounds[0] / (inputs.area * inputs.eb)
+        ue_ub = fex_bounds[1] / (inputs.area * inputs.eb)
+        m.UE.setlb(ue_lb)
+        m.UE.setub(ue_ub)
+
+    if fraf_bounds is not None:
+        ur_lb = fraf_bounds[0] / (inputs.area * inputs.eb)
+        ur_ub = fraf_bounds[1] / (inputs.area * inputs.eb)
+        m.UR.setlb(ur_lb)
+        m.UR.setub(ur_ub)
 
     if fex_fixed is not None:
         ue_val = fex_fixed / (inputs.area * inputs.eb)
@@ -97,9 +113,18 @@ def add_optimization(
 
     m.Zone1EntryWater = Constraint(m.t, rule=Zone1EntryWater_rule)
 
-    if f1_min is not None:
-        u1_lb = f1_min / (inputs.area * inputs.eb)
-        m.F1Min = Constraint(expr=m.U[1] >= u1_lb)
+    if f1_bounds is not None:
+        u1_lb = f1_bounds[0] / (inputs.area * inputs.eb)
+        u1_ub = f1_bounds[1] / (inputs.area * inputs.eb)
+        m.U[1].setlb(u1_lb)
+        m.U[1].setub(u1_ub)
+    else:
+        if f1_min is not None:
+            u1_lb = f1_min / (inputs.area * inputs.eb)
+            m.U[1].setlb(u1_lb)
+        if f1_max is not None:
+            u1_ub = f1_max / (inputs.area * inputs.eb)
+            m.U[1].setub(u1_ub)
 
     m.obj = Objective(expr=ce_acid * m.UE * inputs.area * inputs.eb, sense=maximize)
 

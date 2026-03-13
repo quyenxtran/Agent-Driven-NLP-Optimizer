@@ -12,6 +12,8 @@
 # export SMB_FEX_LIBRARY='0.6,0.8,1.0'
 # export SMB_TSTEP_LIBRARY='8.5,9.5,10.5'
 # sbatch --export=ALL,SMB_STAGE=flow-screen,SMB_RUN_NAME=flow_smoke,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/pace_smb_stage_runner.slurm
+# export SMB_NC_LIBRARY='1,2,3,2;2,2,2,2;1,3,2,2'
+# sbatch --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_baseline,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/pace_smb_stage_runner.slurm
 #
 # Override account, partition, or time at submit time if needed:
 # sbatch --account=gts-sn73 --qos=inferno --partition=cpu-amd --time=08:00:00 --export=ALL,SMB_STAGE=reference-eval AutoResearch-SMB/pace_smb_stage_runner.slurm
@@ -138,6 +140,15 @@ SMB_PURITY_MIN="${SMB_PURITY_MIN:-0.90}"
 SMB_RECOVERY_GA_MIN="${SMB_RECOVERY_GA_MIN:-0.90}"
 SMB_RECOVERY_MA_MIN="${SMB_RECOVERY_MA_MIN:-0.90}"
 SMB_MAX_PUMP_FLOW="${SMB_MAX_PUMP_FLOW:-2.5}"
+SMB_TSTEP_BOUNDS="${SMB_TSTEP_BOUNDS:-4.0,12.0}"
+SMB_FFEED_BOUNDS="${SMB_FFEED_BOUNDS:-0.8,2.5}"
+SMB_FDES_BOUNDS="${SMB_FDES_BOUNDS:-0.2,2.5}"
+SMB_FEX_BOUNDS="${SMB_FEX_BOUNDS:-0.2,2.5}"
+SMB_FRAF_BOUNDS="${SMB_FRAF_BOUNDS:-0.2,2.5}"
+SMB_F1_BOUNDS="${SMB_F1_BOUNDS:-1.5,2.5}"
+SMB_MEOH_MAX_RAFF_WT="${SMB_MEOH_MAX_RAFF_WT:-0.10}"
+SMB_WATER_MAX_EX_WT="${SMB_WATER_MAX_EX_WT:-0.05}"
+SMB_WATER_MAX_ZONE1_ENTRY_WT="${SMB_WATER_MAX_ZONE1_ENTRY_WT:-0.01}"
 SMB_STAGE_TEE="${SMB_STAGE_TEE:-0}"
 
 STAGE_ARGS=(
@@ -164,6 +175,15 @@ STAGE_ARGS=(
   --recovery-ga-min "${SMB_RECOVERY_GA_MIN}"
   --recovery-ma-min "${SMB_RECOVERY_MA_MIN}"
   --max-pump-flow "${SMB_MAX_PUMP_FLOW}"
+  --tstep-bounds "${SMB_TSTEP_BOUNDS}"
+  --ffeed-bounds "${SMB_FFEED_BOUNDS}"
+  --fdes-bounds "${SMB_FDES_BOUNDS}"
+  --fex-bounds "${SMB_FEX_BOUNDS}"
+  --fraf-bounds "${SMB_FRAF_BOUNDS}"
+  --f1-bounds "${SMB_F1_BOUNDS}"
+  --meoh-max-raff-wt "${SMB_MEOH_MAX_RAFF_WT}"
+  --water-max-ex-wt "${SMB_WATER_MAX_EX_WT}"
+  --water-max-zone1-entry-wt "${SMB_WATER_MAX_ZONE1_ENTRY_WT}"
 )
 
 if [[ -n "${SMB_LINEAR_SOLVER}" ]]; then
@@ -188,6 +208,7 @@ echo "nc: ${SMB_NC}"
 echo "nc library: ${SMB_NC_LIBRARY}"
 echo "flows: Ffeed=${SMB_FFEED}, F1=${SMB_F1}, Fdes=${SMB_FDES}, Fex=${SMB_FEX}, tstep=${SMB_TSTEP}"
 echo "flow libraries: Ffeed=${SMB_FFEED_LIBRARY} | F1=${SMB_F1_LIBRARY} | Fdes=${SMB_FDES_LIBRARY} | Fex=${SMB_FEX_LIBRARY} | tstep=${SMB_TSTEP_LIBRARY}"
+echo "optimization bounds: tstep=${SMB_TSTEP_BOUNDS} | Ffeed=${SMB_FFEED_BOUNDS} | F1=${SMB_F1_BOUNDS} | Fdes=${SMB_FDES_BOUNDS} | Fex=${SMB_FEX_BOUNDS} | Fraf=${SMB_FRAF_BOUNDS}"
 echo "fidelity: nfex=${SMB_NFEX}, nfet=${SMB_NFET}, ncp=${SMB_NCP}"
 
 cd "${REPO_ROOT}"

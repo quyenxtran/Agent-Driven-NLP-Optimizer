@@ -13,6 +13,8 @@ from itertools import product
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
+from pyomo.environ import value
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SMB_ROOT = REPO_ROOT / "SembaSMB"
@@ -64,6 +66,21 @@ def parse_float_library(raw: str) -> List[float]:
     if not values:
         raise ValueError(f"Expected at least one comma-separated float, got {raw!r}")
     return values
+
+
+def parse_bounds(raw: str | None) -> Tuple[float, float] | None:
+    if raw is None:
+        return None
+    text = raw.strip()
+    if not text:
+        return None
+    values = parse_float_library(text)
+    if len(values) != 2:
+        raise ValueError(f"Expected exactly two comma-separated floats for bounds, got {raw!r}")
+    lb, ub = values
+    if lb > ub:
+        raise ValueError(f"Lower bound must be <= upper bound, got {raw!r}")
+    return (lb, ub)
 
 
 def load_config(args: argparse.Namespace, nc: Sequence[int]) -> SMBConfig:
@@ -198,6 +215,19 @@ def normalized_constraint_violation(metrics: Dict[str, float], flow: FlowRates, 
     return slacks
 
 
+def extract_optimized_flows(m, inputs, run_name: str) -> FlowRates:
+    area_eb = inputs.area * inputs.eb
+    return FlowRates(
+        F1=value(m.U[1]) * area_eb,
+        Fdes=value(m.UD) * area_eb,
+        Fex=value(m.UE) * area_eb,
+        Ffeed=value(m.UF) * area_eb,
+        Fraf=value(m.UR) * area_eb,
+        tstep=value(m.tstep),
+        run_name=run_name,
+    )
+
+
 def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str, object]:
     from src import (  # type: ignore
         apply_discretization,
@@ -289,6 +319,161 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
             "solver_name": solver_name,
             "solver_options": solver_options,
             **solver_summary,
+        },
+        "metrics": {key: safe_float(val) for key, val in metrics.items()},
+        "constraint_slacks": slacks,
+        "feasible": feasible,
+        "J_validated": safe_float(metrics["productivity_ex_ga_ma"]) if feasible else None,
+        "timing": {
+            "wall_seconds": wall_seconds,
+            "cpu_seconds_python": cpu_seconds,
+            "cpus_used_for_accounting": cpus_used,
+            "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
+        },
+    }
+
+
+def evaluate_optimized_layout(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str, object]:
+    from src import (  # type: ignore
+        add_optimization,
+        apply_discretization,
+        build_inputs,
+        build_model,
+        compute_outlet_averages,
+        compute_purity_recovery,
+        solve_model,
+    )
+
+    solver_name = resolve_solver_name(args.solver_name)
+    solver_options = build_solver_options(args)
+    config = load_config(args, nc)
+    flow = build_flow(args)
+    tstep_bounds = parse_bounds(args.tstep_bounds)
+    ffeed_bounds = parse_bounds(args.ffeed_bounds)
+    fdes_bounds = parse_bounds(args.fdes_bounds)
+    fex_bounds = parse_bounds(args.fex_bounds)
+    fraf_bounds = parse_bounds(args.fraf_bounds)
+    f1_bounds = parse_bounds(args.f1_bounds)
+
+    start_wall = time.perf_counter()
+    start_cpu = time.process_time()
+    inputs = build_inputs(config, flow)
+    m = build_model(config, inputs)
+    apply_discretization(m, config, inputs)
+    add_optimization(
+        m,
+        inputs,
+        purity_min=args.purity_min,
+        recovery_min_ga=args.recovery_ga_min,
+        recovery_min_ma=args.recovery_ma_min,
+        meoh_max_raff_wt=args.meoh_max_raff_wt,
+        water_max_ex_wt=args.water_max_ex_wt,
+        water_max_zone1_entry_wt=args.water_max_zone1_entry_wt,
+        tstep_bounds=tstep_bounds,
+        ffeed_bounds=ffeed_bounds,
+        fdes_bounds=fdes_bounds,
+        fex_bounds=fex_bounds,
+        fraf_bounds=fraf_bounds,
+        f1_bounds=f1_bounds,
+        f1_min=args.f1_min,
+        f1_max=args.f1_max,
+    )
+    results = solve_model(m, solver_name=solver_name, options=solver_options, tee=args.tee)
+    end_wall = time.perf_counter()
+    end_cpu = time.process_time()
+
+    solver_summary = solver_result_summary(results)
+    cpus_used = int(os.environ.get("SLURM_CPUS_PER_TASK", os.environ.get("SMB_CPU_TASKS", "1")))
+    wall_seconds = end_wall - start_wall
+    cpu_seconds = end_cpu - start_cpu
+
+    if not solver_result_usable(solver_summary):
+        return {
+            "status": "solver_error",
+            "stage": args.stage,
+            "run_name": args.run_name,
+            "nc": list(nc),
+            "initial_flow": {
+                "Ffeed": flow.Ffeed,
+                "F1": flow.F1,
+                "Fdes": flow.Fdes,
+                "Fex": flow.Fex,
+                "Fraf": flow.Fraf,
+                "tstep": flow.tstep,
+            },
+            "solver": {
+                "solver_name": solver_name,
+                "solver_options": solver_options,
+                **solver_summary,
+            },
+            "optimization_bounds": {
+                "tstep_bounds": tstep_bounds,
+                "ffeed_bounds": ffeed_bounds,
+                "fdes_bounds": fdes_bounds,
+                "fex_bounds": fex_bounds,
+                "fraf_bounds": fraf_bounds,
+                "f1_bounds": f1_bounds,
+            },
+            "error": "Solver did not return a usable solution; optimized metrics were not evaluated.",
+            "timing": {
+                "wall_seconds": wall_seconds,
+                "cpu_seconds_python": cpu_seconds,
+                "cpus_used_for_accounting": cpus_used,
+                "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
+            },
+        }
+
+    optimized_flow = extract_optimized_flows(m, inputs, args.run_name)
+    outlets = compute_outlet_averages(m, inputs)
+    metrics = compute_purity_recovery(m, inputs, outlets)
+    slacks = normalized_constraint_violation(metrics, optimized_flow, nc, args)
+    feasible = (
+        slacks["purity_ex_meoh_free"] >= 0.0
+        and slacks["recovery_ex_GA"] >= 0.0
+        and slacks["recovery_ex_MA"] >= 0.0
+        and slacks["F1_max"] >= 0.0
+        and slacks["Fdes_max"] >= 0.0
+        and slacks["Fex_max"] >= 0.0
+        and slacks["Ffeed_max"] >= 0.0
+        and slacks["Fraf_max"] >= 0.0
+        and slacks["F2_positive"] > 0.0
+        and slacks["F4_positive"] > 0.0
+        and slacks["nc_sum"] >= 0.0
+    )
+    return {
+        "status": "ok",
+        "stage": args.stage,
+        "run_name": args.run_name,
+        "nc": list(nc),
+        "initial_flow": {
+            "Ffeed": flow.Ffeed,
+            "F1": flow.F1,
+            "Fdes": flow.Fdes,
+            "Fex": flow.Fex,
+            "Fraf": flow.Fraf,
+            "tstep": flow.tstep,
+        },
+        "optimized_flow": {
+            "Ffeed": optimized_flow.Ffeed,
+            "F1": optimized_flow.F1,
+            "Fdes": optimized_flow.Fdes,
+            "Fex": optimized_flow.Fex,
+            "Fraf": optimized_flow.Fraf,
+            "tstep": optimized_flow.tstep,
+        },
+        "fidelity": {"nfex": config.nfex, "nfet": config.nfet, "ncp": config.ncp, "xscheme": config.xscheme},
+        "solver": {
+            "solver_name": solver_name,
+            "solver_options": solver_options,
+            **solver_summary,
+        },
+        "optimization_bounds": {
+            "tstep_bounds": tstep_bounds,
+            "ffeed_bounds": ffeed_bounds,
+            "fdes_bounds": fdes_bounds,
+            "fex_bounds": fex_bounds,
+            "fraf_bounds": fraf_bounds,
+            "f1_bounds": f1_bounds,
         },
         "metrics": {key: safe_float(val) for key, val in metrics.items()},
         "constraint_slacks": slacks,
@@ -466,6 +651,37 @@ def run_flow_screen(args: argparse.Namespace) -> Dict[str, object]:
     }
 
 
+def run_optimize_layouts(args: argparse.Namespace) -> Dict[str, object]:
+    nc_library = parse_nc_library(args.nc_library)
+    results: List[Dict[str, object]] = []
+    for nc in nc_library:
+        candidate_args = argparse.Namespace(**vars(args))
+        candidate_args.run_name = f"{args.run_name}_nc_{'-'.join(str(v) for v in nc)}"
+        try:
+            results.append(evaluate_optimized_layout(candidate_args, nc))
+        except Exception as exc:
+            results.append(
+                {
+                    "status": "error",
+                    "stage": args.stage,
+                    "run_name": candidate_args.run_name,
+                    "nc": list(nc),
+                    "error": str(exc),
+                    "traceback": traceback.format_exc(),
+                }
+            )
+    successful = [item for item in results if item.get("status") == "ok"]
+    ranked = rank_results(successful) if successful else []
+    return {
+        "status": "ok",
+        "stage": args.stage,
+        "nc_library": [list(nc) for nc in nc_library],
+        "results": results,
+        "ranked_results": ranked,
+        "best_result": ranked[0] if ranked else None,
+    }
+
+
 def artifact_path(args: argparse.Namespace) -> Path:
     job_id = os.environ.get("SLURM_JOB_ID", "local")
     return Path(args.artifact_dir) / f"{args.stage}.{job_id}.{args.run_name}.json"
@@ -478,7 +694,7 @@ def write_artifact(path: Path, payload: Dict[str, object]) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run one SMB benchmark stage.")
-    parser.add_argument("--stage", choices=["solver-check", "reference-eval", "nc-screen", "flow-screen"], required=True)
+    parser.add_argument("--stage", choices=["solver-check", "reference-eval", "nc-screen", "flow-screen", "optimize-layouts"], required=True)
     parser.add_argument("--run-name", default="pace_stage")
     parser.add_argument("--artifact-dir", default=str(REPO_ROOT / "artifacts" / "smb_stage_runs"))
     parser.add_argument("--solver-name", default="auto")
@@ -517,6 +733,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--recovery-ga-min", type=float, default=0.90)
     parser.add_argument("--recovery-ma-min", type=float, default=0.90)
     parser.add_argument("--max-pump-flow", type=float, default=2.5)
+    parser.add_argument("--tstep-bounds", default="4.0,12.0")
+    parser.add_argument("--ffeed-bounds", default="0.8,2.5")
+    parser.add_argument("--fdes-bounds", default="0.2,2.5")
+    parser.add_argument("--fex-bounds", default="0.2,2.5")
+    parser.add_argument("--fraf-bounds", default="0.2,2.5")
+    parser.add_argument("--f1-bounds", default="1.5,2.5")
+    parser.add_argument("--f1-min", type=float, default=1.5)
+    parser.add_argument("--f1-max", type=float)
+    parser.add_argument("--meoh-max-raff-wt", type=float, default=0.10)
+    parser.add_argument("--water-max-ex-wt", type=float, default=0.05)
+    parser.add_argument("--water-max-zone1-entry-wt", type=float, default=0.01)
     return parser
 
 
@@ -533,6 +760,8 @@ def main() -> int:
             payload = run_nc_screen(args)
         elif args.stage == "flow-screen":
             payload = run_flow_screen(args)
+        elif args.stage == "optimize-layouts":
+            payload = run_optimize_layouts(args)
         else:
             raise ValueError(f"Unknown stage {args.stage}")
         write_artifact(path, payload)
