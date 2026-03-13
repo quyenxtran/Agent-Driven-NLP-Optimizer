@@ -14,6 +14,8 @@ set -euo pipefail
 #   IPOPT_PREFIX=/path/to/install
 #   COIN_OR_ROOT=/path/to/sources
 #   COINBREW_TEST=0
+#   IPOPT_LAPACK_LFLAGS="-L/path/to/lib -lopenblas"
+#   COINBREW_EXTRA_ARGS="--parallel-jobs 8"
 
 if [[ -z "${SCRATCH:-}" ]]; then
   echo "ERROR: SCRATCH is not set."
@@ -25,6 +27,8 @@ IPOPT_PREFIX="${IPOPT_PREFIX:-$SCRATCH/opt/ipopt}"
 COIN_OR_ROOT="${COIN_OR_ROOT:-$SCRATCH/src/coin-or}"
 COINBREW="${COIN_OR_ROOT}/coinbrew"
 COINBREW_TEST="${COINBREW_TEST:-1}"
+IPOPT_LAPACK_LFLAGS="${IPOPT_LAPACK_LFLAGS:-}"
+COINBREW_EXTRA_ARGS="${COINBREW_EXTRA_ARGS:-}"
 
 required_cmds=(bash git make pkg-config gcc g++ gfortran)
 download_cmd=""
@@ -53,6 +57,13 @@ fi
 mkdir -p "${COIN_OR_ROOT}" "${IPOPT_PREFIX}"
 cd "${COIN_OR_ROOT}"
 
+if [[ -n "${OPENBLAS_ROOT:-}" ]]; then
+  export PKG_CONFIG_PATH="${OPENBLAS_ROOT}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+  if [[ -z "${IPOPT_LAPACK_LFLAGS}" ]]; then
+    IPOPT_LAPACK_LFLAGS="-L${OPENBLAS_ROOT}/lib -lopenblas"
+  fi
+fi
+
 if [[ ! -x "${COINBREW}" ]]; then
   echo "Downloading coinbrew into ${COINBREW}"
   ${download_cmd} "${COINBREW}" https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
@@ -62,6 +73,12 @@ fi
 echo "Source root: ${COIN_OR_ROOT}"
 echo "Install prefix: ${IPOPT_PREFIX}"
 echo "coinbrew: ${COINBREW}"
+if [[ -n "${IPOPT_LAPACK_LFLAGS}" ]]; then
+  echo "Lapack/BLAS linker flags: ${IPOPT_LAPACK_LFLAGS}"
+fi
+if [[ -n "${PKG_CONFIG_PATH:-}" ]]; then
+  echo "PKG_CONFIG_PATH: ${PKG_CONFIG_PATH}"
+fi
 
 "${COINBREW}" fetch Ipopt --no-prompt
 
@@ -71,6 +88,16 @@ build_args=(
   --no-prompt
   --verbosity=3
 )
+
+if [[ -n "${IPOPT_LAPACK_LFLAGS}" ]]; then
+  build_args+=("--with-lapack-lflags=${IPOPT_LAPACK_LFLAGS}")
+fi
+
+if [[ -n "${COINBREW_EXTRA_ARGS}" ]]; then
+  # shellcheck disable=SC2206
+  extra_args=( ${COINBREW_EXTRA_ARGS} )
+  build_args+=("${extra_args[@]}")
+fi
 
 if [[ "${COINBREW_TEST}" == "1" ]]; then
   build_args+=(--test)
@@ -88,6 +115,9 @@ fi
 if [[ ! -x "${IPOPT_PREFIX}/bin/ipopt" ]]; then
   echo "ERROR: install completed but ipopt executable was not found in ${IPOPT_PREFIX}/bin."
   echo "Check the coinbrew build output above for BLAS/LAPACK, MUMPS, or ASL issues."
+  echo "If LAPACK was not found, rerun with something like:"
+  echo "  export IPOPT_LAPACK_LFLAGS='-L/path/to/lib -lopenblas'"
+  echo "  bash scripts/install_ipopt_coinbrew.sh"
   exit 1
 fi
 
