@@ -246,6 +246,61 @@ def safe_float(value: object) -> float:
     return float(value)
 
 
+def collect_profile_payload(m, inputs) -> Dict[str, object]:
+    from src import compute_outlet_averages, compute_purity_recovery  # type: ignore
+
+    outlets = compute_outlet_averages(m, inputs)
+    metrics = compute_purity_recovery(m, inputs, outlets)
+
+    t_index = list(m.t)
+    t_values = [safe_float(t) for t in t_index]
+    t_terminal = t_index[-1]
+    col_ex = inputs.nc[0]
+    col_raff = inputs.nc[0] + inputs.nc[1] + inputs.nc[2]
+    ncol = sum(inputs.nc)
+
+    outlet_time_series = {
+        "t": t_values,
+        "extract": {},
+        "raffinate": {},
+    }
+    for j, comp_name in enumerate(inputs.comps, start=1):
+        outlet_time_series["extract"][comp_name] = [
+            safe_float(value(m.C[col_ex, j, t, 1.0])) for t in t_index
+        ]
+        outlet_time_series["raffinate"][comp_name] = [
+            safe_float(value(m.C[col_raff, j, t, 1.0])) for t in t_index
+        ]
+
+    terminal_column_profile = {
+        "time": safe_float(t_terminal),
+        "columns": list(range(1, ncol + 1)),
+        "components": {
+            comp_name: [
+                safe_float(value(m.C[col, j, t_terminal, 1.0])) for col in range(1, ncol + 1)
+            ]
+            for j, comp_name in enumerate(inputs.comps, start=1)
+        },
+    }
+
+    return {
+        "outlets": {
+            stream: [safe_float(val) for val in values]
+            for stream, values in outlets.items()
+        },
+        "metrics": {key: safe_float(val) for key, val in metrics.items()},
+        "outlet_time_series": outlet_time_series,
+        "terminal_column_profile": terminal_column_profile,
+    }
+
+
+def try_collect_profile_payload(m, inputs) -> Dict[str, object] | None:
+    try:
+        return collect_profile_payload(m, inputs)
+    except Exception:
+        return None
+
+
 def solver_result_summary(results: object) -> Dict[str, str]:
     solver = getattr(results, "solver", None)
     status = str(getattr(solver, "status", "unknown"))
@@ -315,8 +370,6 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
         apply_discretization,
         build_inputs,
         build_model,
-        compute_outlet_averages,
-        compute_purity_recovery,
         solve_model,
     )
 
@@ -339,7 +392,7 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
     cpu_seconds = end_cpu - start_cpu
 
     if not solver_result_usable(solver_summary):
-        return {
+        payload = {
             "status": "solver_error",
             "stage": args.stage,
             "run_name": args.run_name,
@@ -366,9 +419,17 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
                 "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
             },
         }
+        provisional = try_collect_profile_payload(m, inputs)
+        if provisional is not None:
+            payload["provisional"] = {
+                "source": "infeasible_last_iterate",
+                "validated": False,
+                **provisional,
+            }
+        return payload
 
-    outlets = compute_outlet_averages(m, inputs)
-    metrics = compute_purity_recovery(m, inputs, outlets)
+    profile_payload = collect_profile_payload(m, inputs)
+    metrics = profile_payload["metrics"]
     slacks = normalized_constraint_violation(metrics, flow, nc, args)
     feasible = (
         slacks["purity_ex_meoh_free"] >= 0.0
@@ -402,7 +463,7 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
             "solver_options": solver_options,
             **solver_summary,
         },
-        "metrics": {key: safe_float(val) for key, val in metrics.items()},
+        **profile_payload,
         "constraint_slacks": slacks,
         "feasible": feasible,
         "J_validated": safe_float(metrics["productivity_ex_ga_ma"]) if feasible else None,
@@ -421,8 +482,6 @@ def evaluate_optimized_layout(args: argparse.Namespace, nc: Sequence[int]) -> Di
         apply_discretization,
         build_inputs,
         build_model,
-        compute_outlet_averages,
-        compute_purity_recovery,
         solve_model,
     )
 
@@ -470,7 +529,7 @@ def evaluate_optimized_layout(args: argparse.Namespace, nc: Sequence[int]) -> Di
     cpu_seconds = end_cpu - start_cpu
 
     if not solver_result_usable(solver_summary):
-        return {
+        payload = {
             "status": "solver_error",
             "stage": args.stage,
             "run_name": args.run_name,
@@ -506,10 +565,30 @@ def evaluate_optimized_layout(args: argparse.Namespace, nc: Sequence[int]) -> Di
                 "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
             },
         }
+        try:
+            provisional_flow = extract_optimized_flows(m, inputs, args.run_name)
+            payload["provisional_optimized_flow"] = {
+                "Ffeed": provisional_flow.Ffeed,
+                "F1": provisional_flow.F1,
+                "Fdes": provisional_flow.Fdes,
+                "Fex": provisional_flow.Fex,
+                "Fraf": provisional_flow.Fraf,
+                "tstep": provisional_flow.tstep,
+            }
+        except Exception:
+            pass
+        provisional = try_collect_profile_payload(m, inputs)
+        if provisional is not None:
+            payload["provisional"] = {
+                "source": "infeasible_last_iterate",
+                "validated": False,
+                **provisional,
+            }
+        return payload
 
     optimized_flow = extract_optimized_flows(m, inputs, args.run_name)
-    outlets = compute_outlet_averages(m, inputs)
-    metrics = compute_purity_recovery(m, inputs, outlets)
+    profile_payload = collect_profile_payload(m, inputs)
+    metrics = profile_payload["metrics"]
     slacks = normalized_constraint_violation(metrics, optimized_flow, nc, args)
     feasible = (
         slacks["purity_ex_meoh_free"] >= 0.0
@@ -561,7 +640,7 @@ def evaluate_optimized_layout(args: argparse.Namespace, nc: Sequence[int]) -> Di
             "fraf_bounds": fraf_bounds,
             "f1_bounds": f1_bounds,
         },
-        "metrics": {key: safe_float(val) for key, val in metrics.items()},
+        **profile_payload,
         "constraint_slacks": slacks,
         "feasible": feasible,
         "J_validated": safe_float(metrics["productivity_ex_ga_ma"]) if feasible else None,
