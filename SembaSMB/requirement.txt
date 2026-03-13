@@ -8,10 +8,6 @@ jupyter
 nbconvert
 ipykernel
 
-# Optional Python interface for IPOPT.
-# This does NOT install the ipopt or ipopt_sens executable by itself.
-cyipopt
-
 # External solver executables required outside pip/conda Python package install:
 # - ipopt_sens or ipopt: required for the current SembaSMB NLP workflow
 # - bonmin or couenne: optional direct MINLP baselines if provisioned system-side

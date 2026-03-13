@@ -11,6 +11,11 @@ This workspace contains a Pyomo DAE model for SMB/TMB chromatography and a flowr
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirement.txt
 
+`cyipopt` is not required for the default workflow. The model uses the external
+`ipopt_sens` or `ipopt` executable through Pyomo. Only install
+`requirements-optional.txt` if your system already provides IPOPT development
+libraries for building Python bindings.
+
 ## Running
 .\.venv\Scripts\jupyter nbconvert --execute --to notebook --inplace SMB_flowrate_sweep.ipynb
 .\.venv\Scripts\jupyter nbconvert --execute --to notebook --inplace "Acids_SMB_25 05 20_Run11_updated.ipynb"
