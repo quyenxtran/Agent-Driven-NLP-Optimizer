@@ -31,8 +31,20 @@ if [[ -z "${DEFAULT_REPO_ROOT}" ]]; then
   DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 fi
 REPO_ROOT="${REPO_ROOT:-${DEFAULT_REPO_ROOT}}"
-AUTORESEARCH_ROOT="${AUTORESEARCH_ROOT:-$REPO_ROOT/AutoResearch-SMB}"
-SMB_ROOT="${SMB_ROOT:-$AUTORESEARCH_ROOT/SembaSMB}"
+if [[ -z "${AUTORESEARCH_ROOT:-}" ]]; then
+  if [[ -f "${REPO_ROOT}/benchmarks/run_stage.py" && -d "${REPO_ROOT}/SembaSMB" ]]; then
+    AUTORESEARCH_ROOT="${REPO_ROOT}"
+  else
+    AUTORESEARCH_ROOT="${REPO_ROOT}/AutoResearch-SMB"
+  fi
+fi
+if [[ -z "${SMB_ROOT:-}" ]]; then
+  if [[ -d "${AUTORESEARCH_ROOT}/SembaSMB" ]]; then
+    SMB_ROOT="${AUTORESEARCH_ROOT}/SembaSMB"
+  else
+    SMB_ROOT="${REPO_ROOT}/SembaSMB"
+  fi
+fi
 
 DEFAULT_SCRATCH_ROOT="${PACE_SCRATCH_ROOT:-${SCRATCH:-}}"
 if [[ -z "${DEFAULT_SCRATCH_ROOT}" && -n "${USER:-}" && -d "/scratch/${USER}" ]]; then
