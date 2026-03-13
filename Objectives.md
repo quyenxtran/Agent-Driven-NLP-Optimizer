@@ -228,7 +228,8 @@ For this study, `nc` is allowed to vary like a design variable, but only within 
 These are not free design variables. They are fixed requirements of the problem statement:
 
 - `0.5 <= Ffeed <= 2.5 mL/min`
-- all pump-relevant flows `<= 2.5 mL/min`
+- external pump-limited streams `Fdes`, `Fex`, `Ffeed`, and `Fraf` must stay `<= 2.5 mL/min`
+- internal circulation flow `F1` may vary up to `5.0 mL/min`
 - total physical columns fixed at `8`
 - `purity_ex_meoh_free >= 0.90`
 - `recovery_ex_GA >= 0.90`
@@ -301,7 +302,8 @@ Do not treat `Fraf` as an independent design variable if that would violate the 
 
 ### User-imposed constraints
 
-- No SMB pump may run above `2.5 mL/min`
+- No external SMB pump may run above `2.5 mL/min`
+- The internal `F1` circulation flow may run up to `5.0 mL/min`
 - Keep the total number of physical columns fixed at `8`
 
 Treat feed as a free operating variable subject to the same pump cap and minimum operating limit:
@@ -313,17 +315,20 @@ If `nc` is varied, enforce:
 - `sum(nc) = 8`
 - `nc` must be an admissible integer section allocation
 
-Enforce the `2.5 mL/min` cap on every commanded or derived pump-relevant stream:
+Enforce the external pump cap on commanded or derived external streams:
 
-- `F1 <= 2.5`
 - `Fdes <= 2.5`
 - `Fex <= 2.5`
 - `Ffeed <= 2.5`
 - `Fraf <= 2.5`
 
+Treat `F1` separately as an internal recirculation flow:
+
+- `F1 <= 5.0`
+
 Also enforce the minimum operating flow and physically consistent flow splits:
 
-- `F1 >= 0.5`
+- `0.5 <= F1 <= 5.0`
 - `Fdes >= 0.5`
 - `Fex >= 0.5`
 - `Fraf >= 0.5`
@@ -357,7 +362,7 @@ Use these as the default starting bounds for optimization unless the agent docum
 
 - `tstep in [8.0, 12.0]`
 - `Ffeed in [0.5, 2.5]`
-- `F1 in [0.5, 2.5]`
+- `F1 in [0.5, 5.0]`
 - `Fdes in [0.5, 2.5]`
 - `Fex in [0.5, 2.5]`
 - `Fraf in [0.5, 2.5]`

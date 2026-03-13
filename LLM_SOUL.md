@@ -207,7 +207,8 @@ Before approval, Scientist_B must verify:
 - feed composition matches the Kraton-feed values in `Objectives.md`
 - desorbent is pure MeOH
 - `Ffeed` obeys the current benchmark bounds and pump cap
-- all pump limits are respected
+- external pump limits are respected
+- `F1` respects its separate internal circulation cap
 - `Fraf` is treated consistently with the flow equations
 - purity definition matches the implemented code
 - recovery metrics are computed from the shared metric function

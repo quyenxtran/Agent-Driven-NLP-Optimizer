@@ -30,7 +30,8 @@ Maximize extract productivity of the organic acids, consistent with the local co
 - `recovery_ex_GA >= 0.90`
 - `recovery_ex_MA >= 0.90`
 - `0.5 <= Ffeed <= 2.5 mL/min`
-- all pump-relevant flows `<= 2.5 mL/min`
+- external pump-limited streams `Fdes`, `Fex`, `Ffeed`, and `Fraf` must stay `<= 2.5 mL/min`
+- internal circulation flow `F1` may vary up to `5.0 mL/min`
 - physically consistent internal flow splits
 
 ### Most important inputs

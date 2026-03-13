@@ -271,7 +271,7 @@ def normalized_constraint_violation(metrics: Dict[str, float], flow: FlowRates, 
         "purity_ex_meoh_free": metrics["purity_ex_meoh_free"] - args.purity_min,
         "recovery_ex_GA": metrics["recovery_ex_GA"] - args.recovery_ga_min,
         "recovery_ex_MA": metrics["recovery_ex_MA"] - args.recovery_ma_min,
-        "F1_max": args.max_pump_flow - flow.F1,
+        "F1_max": args.f1_max_flow - flow.F1,
         "Fdes_max": args.max_pump_flow - flow.Fdes,
         "Fex_max": args.max_pump_flow - flow.Fex,
         "Ffeed_max": args.max_pump_flow - flow.Ffeed,
@@ -284,7 +284,7 @@ def normalized_constraint_violation(metrics: Dict[str, float], flow: FlowRates, 
         max(0.0, -slacks["purity_ex_meoh_free"]) / max(args.purity_min, 1e-12)
         + max(0.0, -slacks["recovery_ex_GA"]) / max(args.recovery_ga_min, 1e-12)
         + max(0.0, -slacks["recovery_ex_MA"]) / max(args.recovery_ma_min, 1e-12)
-        + max(0.0, -slacks["F1_max"]) / max(args.max_pump_flow, 1e-12)
+        + max(0.0, -slacks["F1_max"]) / max(args.f1_max_flow, 1e-12)
         + max(0.0, -slacks["Fdes_max"]) / max(args.max_pump_flow, 1e-12)
         + max(0.0, -slacks["Fex_max"]) / max(args.max_pump_flow, 1e-12)
         + max(0.0, -slacks["Ffeed_max"]) / max(args.max_pump_flow, 1e-12)
@@ -844,9 +844,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fdes-bounds", default="0.5,2.5")
     parser.add_argument("--fex-bounds", default="0.5,2.5")
     parser.add_argument("--fraf-bounds", default="0.5,2.5")
-    parser.add_argument("--f1-bounds", default="0.5,2.5")
+    parser.add_argument("--f1-bounds", default="0.5,5.0")
     parser.add_argument("--f1-min", type=float, default=0.5)
     parser.add_argument("--f1-max", type=float)
+    parser.add_argument("--f1-max-flow", type=float, default=5.0)
     parser.add_argument("--meoh-max-raff-wt", type=float, default=0.10)
     parser.add_argument("--water-max-ex-wt", type=float, default=0.05)
     parser.add_argument("--water-max-zone1-entry-wt", type=float, default=0.01)
