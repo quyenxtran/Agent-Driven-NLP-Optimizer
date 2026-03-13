@@ -1,5 +1,5 @@
 param(
-    [string]$RemoteHost = "qtran47@login-phoenix-gnr-1",
+    [string]$RemoteHost = "qtran47@login-phoenix.pace.gatech.edu",
     [string]$RemoteRepo = "/storage/home/hcoda1/4/qtran47/AutoResearch-SMB",
     [string]$LocalRepo = (Split-Path -Parent $PSScriptRoot),
     [string]$SyncRoot = "",
@@ -35,6 +35,9 @@ foreach ($item in $items) {
     New-Item -ItemType Directory -Force -Path $localParent | Out-Null
     Write-Host "Syncing $item -> $localTarget"
     & $scp.Source -r "${RemoteHost}:${RemoteRepo}/${item}" "$localParent"
+    if ($LASTEXITCODE -ne 0) {
+        throw "scp failed while syncing '$item' from '$RemoteHost'. Verify the hostname or pass -RemoteHost explicitly."
+    }
 }
 
 Write-Host ""
