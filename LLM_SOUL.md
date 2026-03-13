@@ -32,6 +32,22 @@ When a Slurm job exports compute metadata, prefer those values over defaults. Th
 
 Both scientists must explicitly account for compute cost when choosing fidelity, sweep size, and whether to use local GPU-backed Qwen planning or CPU-only simulation work.
 
+## Benchmark Budget Mode
+
+When the purpose of a run is a formal benchmark against the direct baseline, use a counted SMB numerical budget of `5.0` hours unless the job exports a different benchmark budget.
+
+Interpret benchmark mode as:
+
+- `4.0` hours for search and refinement
+- `1.0` hour reserved for final validation
+
+In benchmark mode, both scientists must obey these fairness rules:
+
+- do not exceed the counted `5.0` SMB hours
+- do not spend the reserved validation hour early unless the reason is documented
+- compare against the same admissible `nc` library, the same variable bounds, and the same final validation model
+- report SMB-only wall time and CPU-hours from the run ledger
+
 ## Available Numerical Resources
 
 Treat the following as the available menu of numerical resources. The model may choose from this menu, but it must first verify what is actually installed and working in the current job environment.

@@ -325,6 +325,106 @@ The cleanest rule is:
 
 In practice, wall time should be set long enough that the direct MINLP baseline can complete at least one serious run instead of timing out trivially.
 
+## Five-Hour Benchmark Protocol
+
+Use a counted SMB numerical budget of `5.0` hours for each method.
+
+This budget is intended to compare:
+
+- the direct MINLP-style baseline
+- the agent-assisted search system
+
+Only SMB numerical work counts against this budget.
+
+### Counted work
+
+Count these against the `5.0` hours:
+
+- model build plus nonlinear solve for candidate screening
+- layout optimization solves
+- flow-screen or feasibility-screen solves
+- final validation solves
+- repeated confirmation solves used to accept or reject a candidate
+
+Do not count these against the `5.0` hours:
+
+- solver installation
+- one-time environment setup
+- one-time smoke tests such as `solver-check`
+- editing prompts, notebooks, or code
+
+### Budget split
+
+Use the same split for both methods:
+
+- `4.0` hours for search and refinement
+- `1.0` hour reserved for final validation
+
+The reserved validation hour should not be spent during early exploration unless the method documents a reason.
+
+### Direct baseline under the 5-hour rule
+
+For the current `Pyomo + Ipopt` workflow, the direct baseline should be treated as a practical MINLP-style benchmark:
+
+- admissible `nc` enumeration
+- continuous NLP optimization within each selected layout
+- notebook-seeded multistart for the continuous variables
+
+The direct baseline should follow a fixed policy:
+
+1. use the same admissible `nc` library as the agent benchmark
+2. spend the `4.0` search hours on medium-fidelity search and refinement
+3. use the `1.0` reserved hour on high-fidelity validation of the best incumbent layouts
+4. do not adapt the search logic mid-run except through its predefined solver fallback policy
+
+### Agent-assisted baseline under the 5-hour rule
+
+The agent-assisted system receives the same counted `5.0` hours, but it may choose:
+
+- which admissible `nc` layouts to screen first
+- which fidelity to use at each stage
+- when to stop exploring a weak region
+- when to spend the reserved validation hour
+
+The agent is still bound by:
+
+- the same admissible `nc` library
+- the same flow and time bounds
+- the same hard purity and recovery constraints
+- the same final high-fidelity validation model
+- the same total counted SMB budget
+
+### Recommended benchmark sequence
+
+For each method:
+
+1. start with the same admissible `nc` library and the same hard constraints
+2. explore and refine candidates under the `4.0` hour search budget
+3. log every SMB numerical call in the same ledger format
+4. transition to final validation before the `1.0` reserved hour is exhausted
+5. report the best validated candidate obtained within the total counted `5.0` hours
+
+### Required outputs of the 5-hour benchmark
+
+For each method, report:
+
+- best validated `J_validated`
+- final `nc`
+- final `Ffeed`, `F1`, `Fdes`, `Fex`, `tstep`
+- final purity and recoveries
+- time to first feasible candidate, if any
+- total SMB-only wall time used
+- total SMB-only CPU-hours used
+- total solve count
+- high-fidelity solve count
+- whether the final point was validated inside the reserved hour
+
+### Meaning of the comparison
+
+Under this protocol, the fair question is:
+
+- with the same counted `5.0` SMB hours, which method reaches the best validated feasible solution, and how quickly does it get there?
+
 ## How To Account For Agent Compute Fairly
 
 The agent will usually run many NLPs at different fidelities, so the fair accounting unit should be SMB numerical cost, not the number of agent decisions.
