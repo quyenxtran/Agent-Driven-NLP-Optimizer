@@ -13,14 +13,14 @@ def add_optimization(
     water_max_ex_wt: float = 0.05,
     water_max_zone1_entry_wt: float = 0.01,
     tstep_bounds=(8.0, 12.0),
-    ffeed_bounds=(1.0, 3.0),
-    fdes_bounds=None,
-    fex_bounds=None,
-    fraf_bounds=None,
-    f1_bounds=None,
+    ffeed_bounds=(0.5, 2.5),
+    fdes_bounds=(0.5, 2.5),
+    fex_bounds=(0.5, 2.5),
+    fraf_bounds=(0.5, 2.5),
+    f1_bounds=(0.5, 5.0),
     fex_fixed=None,
-    f1_min: float = 1.5,
-    f1_max: float = None,
+    f1_min: float = 0.5,
+    f1_max: float = 5.0,
 ):
     m.UF.free()
     m.UD.free()
