@@ -106,12 +106,12 @@ def resolve_solver_name(requested: str) -> str:
 
     if requested != "auto":
         return requested
-    if check_solver_available("ipopt_sens"):
-        return "ipopt_sens"
     if check_solver_available("ipopt"):
         return "ipopt"
+    if check_solver_available("ipopt_sens"):
+        return "ipopt_sens"
     raise RuntimeError(
-        "No IPOPT executable is available. Install ipopt_sens or ipopt, "
+        "No IPOPT executable is available. Install ipopt or ipopt_sens, "
         "or pass --solver-name with a working solver."
     )
 

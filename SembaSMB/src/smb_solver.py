@@ -15,7 +15,7 @@ def default_ipopt_options() -> Dict[str, float]:
     }
 
 
-def check_solver_available(solver_name: str = 'ipopt_sens') -> bool:
+def check_solver_available(solver_name: str = 'ipopt') -> bool:
     try:
         if shutil.which(solver_name) is None:
             return False
@@ -27,7 +27,7 @@ def check_solver_available(solver_name: str = 'ipopt_sens') -> bool:
         return False
 
 
-def solve_model(m, solver_name: str = 'ipopt_sens', options: Optional[Dict[str, float]] = None, tee: bool = True):
+def solve_model(m, solver_name: str = 'ipopt', options: Optional[Dict[str, float]] = None, tee: bool = True):
     opt = SolverFactory(solver_name)
     if options:
         for key, val in options.items():
