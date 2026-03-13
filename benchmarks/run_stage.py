@@ -139,6 +139,26 @@ def safe_float(value: object) -> float:
     return float(value)
 
 
+def solver_result_summary(results: object) -> Dict[str, str]:
+    solver = getattr(results, "solver", None)
+    status = str(getattr(solver, "status", "unknown"))
+    termination = str(getattr(solver, "termination_condition", "unknown"))
+    message = str(getattr(solver, "message", "") or "")
+    return {
+        "status": status,
+        "termination_condition": termination,
+        "message": message,
+    }
+
+
+def solver_result_usable(summary: Dict[str, str]) -> bool:
+    return summary["status"].lower() == "ok" and summary["termination_condition"].lower() in {
+        "optimal",
+        "locallyoptimal",
+        "feasible",
+    }
+
+
 def normalized_constraint_violation(metrics: Dict[str, float], flow: FlowRates, nc: Sequence[int], args: argparse.Namespace) -> Dict[str, float]:
     slacks = {
         "purity_ex_meoh_free": metrics["purity_ex_meoh_free"] - args.purity_min,
@@ -193,6 +213,39 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
     results = solve_model(m, solver_name=solver_name, options=solver_options, tee=args.tee)
     end_wall = time.perf_counter()
     end_cpu = time.process_time()
+    solver_summary = solver_result_summary(results)
+    cpus_used = int(os.environ.get("SLURM_CPUS_PER_TASK", os.environ.get("SMB_CPU_TASKS", "1")))
+    wall_seconds = end_wall - start_wall
+    cpu_seconds = end_cpu - start_cpu
+
+    if not solver_result_usable(solver_summary):
+        return {
+            "status": "solver_error",
+            "stage": args.stage,
+            "run_name": args.run_name,
+            "nc": list(nc),
+            "flow": {
+                "Ffeed": flow.Ffeed,
+                "F1": flow.F1,
+                "Fdes": flow.Fdes,
+                "Fex": flow.Fex,
+                "Fraf": flow.Fraf,
+                "tstep": flow.tstep,
+            },
+            "fidelity": {"nfex": config.nfex, "nfet": config.nfet, "ncp": config.ncp, "xscheme": config.xscheme},
+            "solver": {
+                "solver_name": solver_name,
+                "solver_options": solver_options,
+                **solver_summary,
+            },
+            "error": "Solver did not return a usable solution; metrics were not evaluated.",
+            "timing": {
+                "wall_seconds": wall_seconds,
+                "cpu_seconds_python": cpu_seconds,
+                "cpus_used_for_accounting": cpus_used,
+                "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
+            },
+        }
 
     outlets = compute_outlet_averages(m, inputs)
     metrics = compute_purity_recovery(m, inputs, outlets)
@@ -210,10 +263,6 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
         and slacks["F4_positive"] > 0.0
         and slacks["nc_sum"] >= 0.0
     )
-    cpus_used = int(os.environ.get("SLURM_CPUS_PER_TASK", os.environ.get("SMB_CPU_TASKS", "1")))
-    wall_seconds = end_wall - start_wall
-    cpu_seconds = end_cpu - start_cpu
-
     return {
         "status": "ok",
         "stage": args.stage,
@@ -231,8 +280,7 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int]) -> Dict[str,
         "solver": {
             "solver_name": solver_name,
             "solver_options": solver_options,
-            "status": str(results.solver.status),
-            "termination_condition": str(results.solver.termination_condition),
+            **solver_summary,
         },
         "metrics": {key: safe_float(val) for key, val in metrics.items()},
         "constraint_slacks": slacks,
