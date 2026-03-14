@@ -383,6 +383,7 @@ Minimum required behavior:
    - validation of final candidates
 5. Distinguish exploratory results from validated results.
 6. Re-check final candidates at the highest chosen fidelity before reporting a result.
+7. Compare all admissible `nc` layouts in the configured campaign scope and document cross-layout tradeoffs before selecting final simulation priorities.
 
 If the constraints appear infeasible, the agent must say so explicitly and provide:
 
@@ -390,6 +391,64 @@ If the constraints appear infeasible, the agent must say so explicitly and provi
 - the violated constraints
 - the amount of violation
 - whether the failure appears to come from model physics, bounds, or numerical issues
+
+## Mandatory NC-Coverage and Comparative Reasoning
+
+The scientists must reason over the full discrete `nc` search scope for each campaign, not a single favorite layout.
+
+- If `nc_library` is explicitly provided, every listed layout must be screened before claiming a preferred layout.
+- If `nc_library=all`, the campaign scope is all admissible integer tuples with:
+  - `n1, n2, n3, n4 >= 1`
+  - `n1 + n2 + n3 + n4 = 8`
+- A layout can only be de-prioritized after documenting evidence (feasibility rate, violation pattern, or clearly inferior productivity under comparable fidelity).
+
+For each layout, maintain a comparable record of:
+
+- number of runs attempted
+- number of feasible runs
+- best feasible `J_validated` (if available)
+- best near-feasible `normalized_total_violation`
+- best observed `productivity_ex_ga_ma`
+- most common solver termination condition
+
+## Insights and Trends Ledger (Required in `research.md`)
+
+The scientists must keep a rolling `Insights and Trends` section in `research.md` and update it after every simulation result (search and validation).
+
+The rolling trend record must be data-backed and include at least:
+
+- per-layout (`nc`) trend table with counts, feasibility, best violation, and best productivity
+- current ranking rationale (why the next simulations are prioritized)
+- trend notes for flow sensitivity (`Ffeed`, `F1`, `Fdes`, `Fex`, `tstep`)
+- trend notes for constraint bottlenecks (`purity_ex_meoh_free`, `recovery_ex_GA`, `recovery_ex_MA`)
+- solver behavior trend (`optimal`, `infeasible`, `other`, or runtime/library failures)
+
+The trend section is not static documentation. It must be refreshed with new run data each iteration and used to revise priorities.
+
+## Simulation Priority Policy
+
+Simulation priorities must be updated from observed data, not fixed heuristics:
+
+1. Prioritize feasibility first (maximize feasible rate, minimize normalized violation).
+2. Among feasible candidates, prioritize validated objective quality (`J_validated` and productivity).
+3. Spend simulation budget across layouts to avoid early collapse to one `nc` without evidence.
+4. Use local neighborhood perturbations around promising points to learn directional trends.
+5. Escalate to high fidelity only for candidates justified by medium-fidelity evidence.
+
+## LLM Runtime and Fallback Policy
+
+The default reasoning backend is local Ollama (Qwen). If local Ollama is unavailable, unstable, or times out, the scientists may use a fallback remote model:
+
+- fallback model: `gpt-5-nano`
+- endpoint: OpenAI-compatible `/chat/completions`
+- API key source: environment variables (for example from shell startup files)
+
+Fallback use must preserve the same research discipline:
+
+- no skipping `research.md` updates
+- no skipping SQLite-context-informed reasoning
+- no skipping layout trend updates after each simulation
+- always log which backend produced the decision rationale
 
 ## Final Deliverables
 
