@@ -508,8 +508,14 @@ fi
 
 AGENT_ENTRYPOINT="${AGENT_ENTRYPOINT:-}"
 if [[ -n "${AGENT_ENTRYPOINT}" ]]; then
+  if [[ "${AGENT_ENTRYPOINT}" == python\ * ]]; then
+    AGENT_ENTRYPOINT="${VENV_PY} ${AGENT_ENTRYPOINT#python }"
+  fi
+  hash -r
+  echo "Agent launch python: ${VENV_PY}"
+  echo "Agent launch which python: $(command -v python || true)"
   echo "[$(date '+%F %T')] START: AGENT_ENTRYPOINT=${AGENT_ENTRYPOINT}"
-  bash -lc "${AGENT_ENTRYPOINT}"
+  bash -c "${AGENT_ENTRYPOINT}"
   echo "[$(date '+%F %T')] DONE: agent entrypoint"
 else
   echo "No AGENT_ENTRYPOINT provided."

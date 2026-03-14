@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-name", default=os.environ.get("SMB_EXPERIMENT_NAME", "qwen_smb_two_scientists"))
     parser.add_argument("--artifact-dir", default=str(REPO_ROOT / "artifacts" / "agent_runs"))
     parser.add_argument("--conversation-log", default=os.environ.get("SMB_CONVERSATION_LOG", ""))
+    parser.add_argument("--conversation-stream-log", default=os.environ.get("SMB_CONVERSATION_STREAM_LOG", ""))
     parser.add_argument("--sqlite-db", default=os.environ.get("SMB_SQLITE_DB", str(REPO_ROOT / "artifacts" / "agent_runs" / "smb_agent_context.sqlite")))
     parser.add_argument("--research-md", default=os.environ.get("SMB_RESEARCH_MD", str(REPO_ROOT / "research.md")))
     parser.add_argument("--research-tail-chars", type=int, default=int(os.environ.get("SMB_RESEARCH_TAIL_CHARS", "6000")))
@@ -398,6 +399,7 @@ class OpenAICompatClient:
         fallback_base_url: str = "",
         fallback_model: str = "",
         fallback_api_key: str = "",
+        conversation_stream_path: Optional[Path] = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -415,6 +417,18 @@ class OpenAICompatClient:
         self.last_backend = "none"
         self.call_counter = 0
         self.conversations: List[Dict[str, object]] = []
+        self.conversation_stream_path = conversation_stream_path
+
+    def _append_conversation_stream(self, record: Dict[str, object]) -> None:
+        if self.conversation_stream_path is None:
+            return
+        try:
+            self.conversation_stream_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.conversation_stream_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, ensure_ascii=True) + "\n")
+        except Exception:
+            # Streaming is best-effort; full transcript is still persisted at run end.
+            return
 
     def _chat_once(
         self,
@@ -497,6 +511,7 @@ class OpenAICompatClient:
                 record["final_backend"] = self.last_backend
                 record["assistant_response"] = content
                 self.conversations.append(record)
+                self._append_conversation_stream(record)
                 return content
         if self.fallback_enabled:
             content, err = self._chat_once(
@@ -520,10 +535,12 @@ class OpenAICompatClient:
                 record["final_backend"] = self.last_backend
                 record["assistant_response"] = content
                 self.conversations.append(record)
+                self._append_conversation_stream(record)
                 return content
         self.last_backend = "none"
         record["final_backend"] = self.last_backend
         self.conversations.append(record)
+        self._append_conversation_stream(record)
         return None
 
     @staticmethod
@@ -1232,6 +1249,19 @@ def conversation_log_path(args: argparse.Namespace) -> Path:
     return Path(args.artifact_dir) / f"agent-runner.{job_id}.{args.run_name}.conversations.json"
 
 
+def conversation_stream_log_path(args: argparse.Namespace, conversation_path: Path) -> Path:
+    if args.conversation_stream_log:
+        return Path(args.conversation_stream_log)
+    if conversation_path.suffix:
+        return conversation_path.with_suffix(".jsonl")
+    return Path(str(conversation_path) + ".jsonl")
+
+
+def initialize_conversation_stream(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("", encoding="utf-8")
+
+
 def write_artifact(path: Path, payload: Dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="ascii")
@@ -1247,6 +1277,7 @@ def main() -> int:
     args = parser.parse_args()
     artifact = artifact_path(args)
     conversation_artifact = conversation_log_path(args)
+    conversation_stream_artifact = conversation_stream_log_path(args, conversation_artifact)
     research_path = Path(args.research_md)
     objectives_excerpt = read_doc_excerpt(args.objectives_file, max_chars=5000)
     soul_excerpt = read_doc_excerpt(args.llm_soul_file, max_chars=4000)
@@ -1260,6 +1291,7 @@ def main() -> int:
         fallback_base_url=args.fallback_llm_base_url,
         fallback_model=args.fallback_llm_model,
         fallback_api_key=args.fallback_llm_api_key,
+        conversation_stream_path=conversation_stream_artifact,
     )
     sqlite_conn = open_sqlite_db(args.sqlite_db)
     optimize_stage_args = configure_stage_args(make_stage_args("optimize-layouts"), args)
@@ -1274,6 +1306,7 @@ def main() -> int:
     tried: set[Tuple[Tuple[int, ...], str]] = set()
 
     try:
+        initialize_conversation_stream(conversation_stream_artifact)
         if args.reset_research_section:
             reset_research_run_section(research_path, args.run_name)
         initial_sqlite_excerpt = sqlite_history_context(sqlite_conn)
@@ -1422,6 +1455,7 @@ def main() -> int:
             },
             "llm_conversations": {
                 "path": str(conversation_artifact.resolve()),
+                "stream_path": str(conversation_stream_artifact.resolve()),
                 "count": len(client.conversations),
             },
             "benchmark_budget": {
@@ -1476,6 +1510,7 @@ def main() -> int:
                     "fallback_base_url": args.fallback_llm_base_url if client.fallback_enabled else "",
                     "fallback_model": args.fallback_llm_model if client.fallback_enabled else "",
                 },
+                "stream_path": str(conversation_stream_artifact.resolve()),
                 "conversations": client.conversations,
             },
         )
@@ -1491,6 +1526,7 @@ def main() -> int:
                     "run_name": args.run_name,
                     "generated_at_utc": utc_now_text(),
                     "error": str(exc),
+                    "stream_path": str(conversation_stream_artifact.resolve()),
                     "conversations": client.conversations,
                 },
             )
@@ -1503,6 +1539,7 @@ def main() -> int:
             "traceback": traceback.format_exc(),
             "llm_conversations": {
                 "path": str(conversation_artifact.resolve()),
+                "stream_path": str(conversation_stream_artifact.resolve()),
                 "count": len(client.conversations),
             },
         }
