@@ -47,7 +47,11 @@ def build_model(config: SMBConfig, inputs: SMBInputs) -> ConcreteModel:
     m.CF = Param(m.comp, initialize=inputs.dict_CF)
     m.CD = Param(m.comp, initialize=inputs.dict_CD)
 
-    m.U = Var(m.col, within=PositiveReals, initialize=inputs.dict_U, bounds=(0.1, 12.0))
+    # Internal section velocities can legitimately exceed 12 when the benchmark
+    # allows F1 up to 5.0 mL/min and feed/desorbent streams near 2.5 mL/min.
+    # Keep the lower bound positive but relax the upper bound to avoid clipping
+    # feasible operating regions during optimization.
+    m.U = Var(m.col, within=PositiveReals, initialize=inputs.dict_U, bounds=(0.1, 25.0))
 
     m.UF = Var(initialize=inputs.u_f, bounds=(0.01, 10.0))
     m.UD = Var(initialize=inputs.u_d, bounds=(0.01, 10.0))

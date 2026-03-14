@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -150,6 +151,7 @@ def build_record(path: Path, artifact: Dict[str, object]) -> Optional[Dict[str, 
     return {
         "artifact_path": str(path),
         "method": classify_method(artifact, path),
+        "source_stage": artifact.get("stage"),
         "run_name": best.get("run_name", artifact.get("run_name", path.stem)),
         "validated": validated,
         "feasible": bool(best.get("feasible", False)),
@@ -166,6 +168,70 @@ def build_record(path: Path, artifact: Dict[str, object]) -> Optional[Dict[str, 
         "fex": flow.get("Fex") if isinstance(flow, dict) else None,
         "tstep": flow.get("tstep") if isinstance(flow, dict) else None,
     }
+
+
+def iter_candidate_items(artifact: Dict[str, object]) -> Iterable[Dict[str, object]]:
+    stage = artifact.get("stage")
+    if stage in {"reference-eval", "solver-check"}:
+        yield artifact
+        return
+    for key in ("results", "search_results", "validation_results", "ranked_results"):
+        items = artifact.get(key)
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict):
+                    yield item
+
+
+def build_detailed_records(path: Path, artifact: Dict[str, object]) -> List[Dict[str, object]]:
+    records: List[Dict[str, object]] = []
+    seen: set[Tuple[str, str]] = set()
+    method = classify_method(artifact, path)
+    source_stage = str(artifact.get("stage", ""))
+    for idx, item in enumerate(iter_candidate_items(artifact), start=1):
+        run_name = str(item.get("run_name", f"{path.stem}_{idx:03d}"))
+        dedupe_key = (source_stage, run_name)
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        metrics, validated = get_metrics(item)
+        flow = None
+        for key in ("optimized_flow", "provisional_optimized_flow", "initial_flow", "flow"):
+            candidate = item.get(key)
+            if isinstance(candidate, dict):
+                flow = candidate
+                break
+        slacks = item.get("constraint_slacks")
+        total_violation = None
+        if isinstance(slacks, dict) and "normalized_total_violation" in slacks:
+            total_violation = float(slacks["normalized_total_violation"])
+        timing = item.get("timing") or {}
+        records.append(
+            {
+                "artifact_path": str(path),
+                "method": method,
+                "source_stage": source_stage,
+                "run_name": run_name,
+                "status": item.get("status"),
+                "validated": validated,
+                "feasible": bool(item.get("feasible", False)),
+                "nc": str(item.get("nc")),
+                "seed_name": item.get("seed_name"),
+                "productivity": metrics.get("productivity_ex_ga_ma") if metrics else None,
+                "purity": metrics.get("purity_ex_meoh_free") if metrics else None,
+                "recovery_ga": metrics.get("recovery_ex_GA") if metrics else None,
+                "recovery_ma": metrics.get("recovery_ex_MA") if metrics else None,
+                "normalized_total_violation": total_violation,
+                "wall_hours": float(timing.get("wall_seconds", 0.0)) / 3600.0 if isinstance(timing, dict) else None,
+                "cpu_hours": float(timing.get("cpu_hours_accounted", 0.0)) if isinstance(timing, dict) else None,
+                "f1": flow.get("F1") if isinstance(flow, dict) else None,
+                "ffeed": flow.get("Ffeed") if isinstance(flow, dict) else None,
+                "fdes": flow.get("Fdes") if isinstance(flow, dict) else None,
+                "fex": flow.get("Fex") if isinstance(flow, dict) else None,
+                "tstep": flow.get("tstep") if isinstance(flow, dict) else None,
+            }
+        )
+    return records
 
 
 def write_csv(records: List[Dict[str, object]], path: Path) -> None:
@@ -248,16 +314,103 @@ def plot_compute_vs_productivity(records: List[Dict[str, object]], output: Path)
     plt.close(fig)
 
 
+def _candidate_style(record: Dict[str, object]) -> Tuple[str, str, float]:
+    method = str(record.get("method"))
+    validated = bool(record.get("validated"))
+    feasible = bool(record.get("feasible"))
+    if method == "baseline":
+        color = "tab:blue"
+    elif method == "agent":
+        color = "tab:orange"
+    else:
+        color = "tab:gray"
+    marker = "o" if validated and feasible else "x"
+    alpha = 0.9 if validated and feasible else 0.45
+    return color, marker, alpha
+
+
+def plot_candidate_parameter_productivity(records: List[Dict[str, object]], output: Path) -> None:
+    plottable = [record for record in records if record.get("productivity") is not None]
+    if not plottable:
+        return
+
+    params = [
+        ("ffeed", "Ffeed"),
+        ("f1", "F1"),
+        ("fdes", "Fdes"),
+        ("fex", "Fex"),
+        ("tstep", "tstep"),
+        ("cpu_hours", "CPU-hours"),
+    ]
+    fig, axes = plt.subplots(2, 3, figsize=(14, 8))
+    for ax, (key, label) in zip(axes.flat, params):
+        xs = [record.get(key) for record in plottable]
+        ys = [record.get("productivity") for record in plottable]
+        if not any(value is not None for value in xs):
+            ax.set_visible(False)
+            continue
+        for record, x, y in zip(plottable, xs, ys):
+            if x is None or y is None:
+                continue
+            color, marker, alpha = _candidate_style(record)
+            ax.scatter(float(x), float(y), color=color, marker=marker, alpha=alpha, s=55)
+        ax.set_xlabel(label)
+        ax.set_ylabel("Productivity")
+        ax.set_title(f"Productivity vs {label}")
+        ax.grid(alpha=0.3)
+
+    legend_handles = [
+        Line2D([0], [0], marker="o", color="w", label="baseline validated", markerfacecolor="tab:blue", markersize=8),
+        Line2D([0], [0], marker="o", color="w", label="agent validated", markerfacecolor="tab:orange", markersize=8),
+        Line2D([0], [0], marker="x", color="tab:blue", label="baseline provisional", markersize=8),
+        Line2D([0], [0], marker="x", color="tab:orange", label="agent provisional", markersize=8),
+    ]
+    fig.legend(handles=legend_handles, loc="upper center", ncol=4, frameon=False)
+    fig.suptitle("Candidate Productivity vs Parameters", fontsize=18)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(output, dpi=300)
+    plt.close(fig)
+
+
+def plot_candidate_productivity_by_layout(records: List[Dict[str, object]], output: Path) -> None:
+    plottable = [record for record in records if record.get("productivity") is not None and record.get("nc")]
+    if not plottable:
+        return
+
+    labels = sorted({str(record["nc"]) for record in plottable})
+    positions = {label: idx for idx, label in enumerate(labels)}
+
+    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.8), 5))
+    for idx, record in enumerate(plottable):
+        label = str(record["nc"])
+        x = positions[label]
+        jitter = ((idx % 7) - 3) * 0.04
+        y = float(record["productivity"])
+        color, marker, alpha = _candidate_style(record)
+        ax.scatter(x + jitter, y, color=color, marker=marker, alpha=alpha, s=55)
+
+    ax.set_xticks(list(positions.values()))
+    ax.set_xticklabels(labels, rotation=25, ha="right")
+    ax.set_ylabel("Productivity")
+    ax.set_title("Candidate Productivity by Layout")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(output, dpi=300)
+    plt.close(fig)
+
+
 def main() -> int:
     args = parse_args()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records: List[Dict[str, object]] = []
+    detailed_records: List[Dict[str, object]] = []
     for path in iter_json_files(args.input_dirs):
         artifact = load_json(path)
         if not isinstance(artifact, dict):
             continue
+        detailed_records.extend(build_detailed_records(path, artifact))
         record = build_record(path, artifact)
         if record is not None:
             records.append(record)
@@ -268,12 +421,21 @@ def main() -> int:
 
     records.sort(key=lambda item: (str(item["method"]), str(item["run_name"])))
     csv_path = output_dir / f"{args.prefix}_summary.csv"
+    detailed_csv_path = output_dir / f"{args.prefix}_detailed.csv"
     write_csv(records, csv_path)
+    if detailed_records:
+        detailed_records.sort(key=lambda item: (str(item["method"]), str(item["source_stage"]), str(item["run_name"])))
+        write_csv(detailed_records, detailed_csv_path)
     plot_best_productivity(records, output_dir / f"{args.prefix}_best_productivity.png")
     plot_constraint_metrics(records, output_dir / f"{args.prefix}_constraint_metrics.png")
     plot_compute_vs_productivity(records, output_dir / f"{args.prefix}_compute_vs_productivity.png")
+    if detailed_records:
+        plot_candidate_parameter_productivity(detailed_records, output_dir / f"{args.prefix}_candidate_parameter_productivity.png")
+        plot_candidate_productivity_by_layout(detailed_records, output_dir / f"{args.prefix}_candidate_productivity_by_layout.png")
 
     print(f"Wrote summary CSV: {csv_path}")
+    if detailed_records:
+        print(f"Wrote detailed CSV: {detailed_csv_path}")
     print(f"Wrote plots under: {output_dir}")
     return 0
 

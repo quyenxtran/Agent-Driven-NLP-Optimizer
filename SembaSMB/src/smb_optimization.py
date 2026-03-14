@@ -25,6 +25,7 @@ def add_optimization(
     m.UF.free()
     m.UD.free()
     m.UE.free()
+    m.UR.unfix()
     m.U[inputs.ncols].free()
     m.tstep.unfix()
     if tstep_bounds is not None:
@@ -58,6 +59,12 @@ def add_optimization(
     if fex_fixed is not None:
         ue_val = fex_fixed / (inputs.area * inputs.eb)
         m.UE.fix(ue_val)
+
+    # For the benchmark problem, raffinate is flow-consistent and derived:
+    # q_raf = q_feed + q_des - q_ex. Enforce the same relation here instead of
+    # letting UR float independently, which can create artificial feasibility
+    # artifacts relative to the documented process constraints.
+    m.RaffinateConsistency = Constraint(expr=m.UR == m.UF + m.UD - m.UE)
 
     m.CE = Var(m.comp)
     m.CR = Var(m.comp)
