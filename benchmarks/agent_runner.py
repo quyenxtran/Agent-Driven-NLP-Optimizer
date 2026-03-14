@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the two-scientist SMB agent benchmark.")
     parser.add_argument("--run-name", default=os.environ.get("SMB_EXPERIMENT_NAME", "qwen_smb_two_scientists"))
     parser.add_argument("--artifact-dir", default=str(REPO_ROOT / "artifacts" / "agent_runs"))
+    parser.add_argument("--conversation-log", default=os.environ.get("SMB_CONVERSATION_LOG", ""))
     parser.add_argument("--sqlite-db", default=os.environ.get("SMB_SQLITE_DB", str(REPO_ROOT / "artifacts" / "agent_runs" / "smb_agent_context.sqlite")))
     parser.add_argument("--research-md", default=os.environ.get("SMB_RESEARCH_MD", str(REPO_ROOT / "research.md")))
     parser.add_argument("--research-tail-chars", type=int, default=int(os.environ.get("SMB_RESEARCH_TAIL_CHARS", "6000")))
@@ -412,6 +413,8 @@ class OpenAICompatClient:
             and bool(self.fallback_api_key)
         )
         self.last_backend = "none"
+        self.call_counter = 0
+        self.conversations: List[Dict[str, object]] = []
 
     def _chat_once(
         self,
@@ -420,9 +423,9 @@ class OpenAICompatClient:
         api_key: str,
         system_prompt: str,
         user_prompt: str,
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], str]:
         if not base_url or not model:
-            return None
+            return None, "missing_base_url_or_model"
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
@@ -444,28 +447,83 @@ class OpenAICompatClient:
         try:
             with request.urlopen(req, timeout=120) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
-            return body["choices"][0]["message"]["content"]
-        except (error.URLError, error.HTTPError, KeyError, json.JSONDecodeError, TimeoutError):
-            return None
+            return body["choices"][0]["message"]["content"], ""
+        except error.HTTPError as exc:
+            return None, f"http_error_{exc.code}"
+        except error.URLError as exc:
+            return None, f"url_error_{str(exc.reason)}"
+        except TimeoutError:
+            return None, "timeout"
+        except KeyError:
+            return None, "missing_choices_message_content"
+        except json.JSONDecodeError:
+            return None, "invalid_json_response"
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            return None, f"unexpected_error_{type(exc).__name__}"
 
-    def chat(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+    def chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        conversation_role: str = "generic",
+        metadata: Optional[Dict[str, object]] = None,
+    ) -> Optional[str]:
+        self.call_counter += 1
+        record: Dict[str, object] = {
+            "call_id": self.call_counter,
+            "timestamp_utc": utc_now_text(),
+            "role": conversation_role,
+            "metadata": metadata or {},
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "attempts": [],
+        }
+
         if self.enabled:
-            content = self._chat_once(self.base_url, self.model, self.api_key, system_prompt, user_prompt)
+            content, err = self._chat_once(self.base_url, self.model, self.api_key, system_prompt, user_prompt)
+            record["attempts"].append(
+                {
+                    "backend": "primary",
+                    "base_url": self.base_url,
+                    "model": self.model,
+                    "success": content is not None,
+                    "error": err,
+                }
+            )
             if content is not None:
                 self.last_backend = "primary"
+                record["final_backend"] = self.last_backend
+                record["assistant_response"] = content
+                self.conversations.append(record)
                 return content
         if self.fallback_enabled:
-            content = self._chat_once(
+            content, err = self._chat_once(
                 self.fallback_base_url,
                 self.fallback_model,
                 self.fallback_api_key,
                 system_prompt,
                 user_prompt,
             )
+            record["attempts"].append(
+                {
+                    "backend": "fallback",
+                    "base_url": self.fallback_base_url,
+                    "model": self.fallback_model,
+                    "success": content is not None,
+                    "error": err,
+                }
+            )
             if content is not None:
                 self.last_backend = "fallback"
+                record["final_backend"] = self.last_backend
+                record["assistant_response"] = content
+                self.conversations.append(record)
                 return content
         self.last_backend = "none"
+        record["final_backend"] = self.last_backend
+        self.conversations.append(record)
         return None
 
     @staticmethod
@@ -639,7 +697,18 @@ def initial_priority_plan(
         }}
         """
     ).strip()
-    raw = client.chat("You are a principal SMB process scientist. Return JSON only.", prompt)
+    raw = client.chat(
+        "You are a principal SMB process scientist. Return JSON only.",
+        prompt,
+        conversation_role="initial_priority_plan",
+        metadata={
+            "phase": "planning",
+            "solver_name": args.solver_name,
+            "linear_solver": args.linear_solver,
+            "nc_library": args.nc_library,
+            "seed_library": args.seed_library,
+        },
+    )
     data = client.extract_json(raw)
     if not isinstance(data, dict):
         return default_plan
@@ -944,6 +1013,7 @@ def scientist_a_pick(
     current_priorities: List[str],
     sqlite_context_excerpt: str,
     budget_used: float,
+    iteration: int,
 ) -> Tuple[int, Dict[str, object]]:
     remaining = [task for task in candidate_tasks if (tuple(task["nc"]), str(task["seed_name"])) not in tried]
     shortlist = remaining[: min(len(remaining), 8)]
@@ -992,7 +1062,18 @@ def scientist_a_pick(
         }}
         """
     ).strip()
-    raw = client.chat("You are a concise optimization scientist. Return JSON only.", prompt)
+    raw = client.chat(
+        "You are a concise optimization scientist. Return JSON only.",
+        prompt,
+        conversation_role="scientist_a_pick",
+        metadata={
+            "iteration": iteration,
+            "search_hours_used": budget_used,
+            "shortlist_size": len(shortlist),
+            "remaining_count": len(remaining),
+            "tried_count": len(tried),
+        },
+    )
     data = client.extract_json(raw)
     if data and isinstance(data.get("candidate_index"), int):
         idx = int(data["candidate_index"])
@@ -1018,6 +1099,7 @@ def scientist_b_review(
     research_excerpt: str,
     current_priorities: List[str],
     sqlite_context_excerpt: str,
+    iteration: int,
 ) -> Dict[str, object]:
     default = deterministic_review(task, best_result)
     prompt = textwrap.dedent(
@@ -1055,7 +1137,17 @@ def scientist_b_review(
         }}
         """
     ).strip()
-    raw = client.chat("You are a skeptical numerical scientist. Return JSON only.", prompt)
+    raw = client.chat(
+        "You are a skeptical numerical scientist. Return JSON only.",
+        prompt,
+        conversation_role="scientist_b_review",
+        metadata={
+            "iteration": iteration,
+            "candidate_nc": task.get("nc"),
+            "candidate_seed_name": task.get("seed_name"),
+            "has_best_result": best_result is not None,
+        },
+    )
     data = client.extract_json(raw)
     if data and str(data.get("decision", "")).lower() in {"approve", "reject"}:
         return {"mode": "llm", "llm_backend": client.last_backend, "raw": raw, **data}
@@ -1133,15 +1225,28 @@ def artifact_path(args: argparse.Namespace) -> Path:
     return Path(args.artifact_dir) / f"agent-runner.{job_id}.{args.run_name}.json"
 
 
+def conversation_log_path(args: argparse.Namespace) -> Path:
+    if args.conversation_log:
+        return Path(args.conversation_log)
+    job_id = os.environ.get("SLURM_JOB_ID", "local")
+    return Path(args.artifact_dir) / f"agent-runner.{job_id}.{args.run_name}.conversations.json"
+
+
 def write_artifact(path: Path, payload: Dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2), encoding="ascii")
+
+
+def write_conversation_log(path: Path, payload: Dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
 
 
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
     artifact = artifact_path(args)
+    conversation_artifact = conversation_log_path(args)
     research_path = Path(args.research_md)
     objectives_excerpt = read_doc_excerpt(args.objectives_file, max_chars=5000)
     soul_excerpt = read_doc_excerpt(args.llm_soul_file, max_chars=4000)
@@ -1217,6 +1322,7 @@ def main() -> int:
                 current_priorities,
                 sqlite_excerpt,
                 search_hours_used,
+                search_iteration,
             )
             task = search_tasks[idx]
             task_key = (tuple(task["nc"]), str(task["seed_name"]))
@@ -1234,6 +1340,7 @@ def main() -> int:
                 research_excerpt,
                 current_priorities,
                 sqlite_excerpt,
+                search_iteration,
             )
             scientist_b_log.append({"task": task, "decision": b_note})
             current_priorities = merge_priority_board(current_priorities, a_note, b_note)
@@ -1313,6 +1420,10 @@ def main() -> int:
                 "fallback_model": args.fallback_llm_model if client.fallback_enabled else "",
                 "last_backend_used": client.last_backend,
             },
+            "llm_conversations": {
+                "path": str(conversation_artifact.resolve()),
+                "count": len(client.conversations),
+            },
             "benchmark_budget": {
                 "total_hours": args.benchmark_hours,
                 "search_hours": args.search_hours,
@@ -1351,15 +1462,49 @@ def main() -> int:
             "best_result": final_best,
             "ledger": ledger,
         }
+        write_conversation_log(
+            conversation_artifact,
+            {
+                "status": "ok",
+                "run_name": args.run_name,
+                "generated_at_utc": utc_now_text(),
+                "llm": {
+                    "primary_enabled": client.enabled,
+                    "primary_base_url": args.llm_base_url,
+                    "primary_model": args.llm_model,
+                    "fallback_enabled": client.fallback_enabled,
+                    "fallback_base_url": args.fallback_llm_base_url if client.fallback_enabled else "",
+                    "fallback_model": args.fallback_llm_model if client.fallback_enabled else "",
+                },
+                "conversations": client.conversations,
+            },
+        )
         write_artifact(artifact, payload)
         print(json.dumps({"artifact": str(artifact), "status": "ok", "run_name": args.run_name}, indent=2))
         return 0
     except Exception as exc:
+        try:
+            write_conversation_log(
+                conversation_artifact,
+                {
+                    "status": "error",
+                    "run_name": args.run_name,
+                    "generated_at_utc": utc_now_text(),
+                    "error": str(exc),
+                    "conversations": client.conversations,
+                },
+            )
+        except Exception:
+            pass
         payload = {
             "status": "error",
             "run_name": args.run_name,
             "error": str(exc),
             "traceback": traceback.format_exc(),
+            "llm_conversations": {
+                "path": str(conversation_artifact.resolve()),
+                "count": len(client.conversations),
+            },
         }
         write_artifact(artifact, payload)
         print(json.dumps({"artifact": str(artifact), "status": "error", "run_name": args.run_name}, indent=2))
