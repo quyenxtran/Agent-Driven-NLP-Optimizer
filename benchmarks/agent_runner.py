@@ -94,6 +94,26 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=int(os.environ.get("SMB_MIN_PROBE_REFERENCE_RUNS", "3")),
     )
+    parser.add_argument(
+        "--probe-low-fidelity-enabled",
+        type=int,
+        default=int(os.environ.get("SMB_PROBE_LOW_FIDELITY_ENABLED", "1")),
+    )
+    parser.add_argument(
+        "--probe-nfex",
+        type=int,
+        default=int(os.environ.get("SMB_PROBE_NFEX", "5")),
+    )
+    parser.add_argument(
+        "--probe-nfet",
+        type=int,
+        default=int(os.environ.get("SMB_PROBE_NFET", "2")),
+    )
+    parser.add_argument(
+        "--probe-ncp",
+        type=int,
+        default=int(os.environ.get("SMB_PROBE_NCP", "1")),
+    )
     parser.add_argument("--llm-timeout-seconds", type=float, default=float(os.environ.get("SMB_LLM_TIMEOUT_SECONDS", "300")))
     parser.add_argument("--llm-max-retries", type=int, default=int(os.environ.get("SMB_LLM_MAX_RETRIES", "2")))
     parser.add_argument(
@@ -1263,6 +1283,9 @@ def start_research_log(
         f"- benchmark_hours: {args.benchmark_hours}",
         f"- search_hours: {args.search_hours}",
         f"- validation_hours: {args.validation_hours}",
+        f"- min_probe_reference_runs: {getattr(args, 'min_probe_reference_runs', '')}",
+        f"- probe_low_fidelity_enabled: {bool(int(getattr(args, 'probe_low_fidelity_enabled', 0)))}",
+        f"- probe_fidelity: nfex={getattr(args, 'probe_nfex', '')}, nfet={getattr(args, 'probe_nfet', '')}, ncp={getattr(args, 'probe_ncp', '')}",
         f"- solver_name: {args.solver_name}",
         f"- linear_solver: {args.linear_solver}",
         f"- nc_library: {args.nc_library}",
@@ -1435,6 +1458,10 @@ def append_result_research(path: Path, result: Dict[str, object], phase: str) ->
         f"  - normalized_total_violation: {slacks.get('normalized_total_violation')}",
         f"  - flow: {flow}",
     ]
+    execution_policy = result.get("execution_policy")
+    if isinstance(execution_policy, dict):
+        lines.append(f"  - execution_policy_note: {execution_policy.get('note')}")
+        lines.append(f"  - execution_policy_fidelity_override: {execution_policy.get('fidelity_override')}")
     comp = composition_metrics_from_result(result)
     if comp is not None:
         lines.append(
@@ -1715,6 +1742,53 @@ def apply_probe_reference_gate(
     }
 
 
+def probe_reference_runs_required(args: argparse.Namespace, tasks: List[Dict[str, object]]) -> int:
+    total_reference_tasks = len(ranked_reference_indices(tasks))
+    if total_reference_tasks <= 0:
+        return 0
+    return min(max(0, int(getattr(args, "min_probe_reference_runs", 0))), total_reference_tasks)
+
+
+def search_execution_policy(
+    args: argparse.Namespace,
+    tasks: List[Dict[str, object]],
+    search_results: List[Dict[str, object]],
+    task: Dict[str, object],
+) -> Dict[str, object]:
+    required = probe_reference_runs_required(args, tasks)
+    completed = reference_probe_runs_completed(search_results)
+    low_fidelity_enabled = bool(int(getattr(args, "probe_low_fidelity_enabled", 1)))
+    probe_phase_active = required > 0 and completed < required
+
+    policy: Dict[str, object] = {
+        "probe_phase_active": probe_phase_active,
+        "completed_reference_runs": completed,
+        "required_reference_runs": required,
+        "low_fidelity_enabled": low_fidelity_enabled,
+    }
+    if not probe_phase_active:
+        return policy
+    if not low_fidelity_enabled:
+        policy["reason"] = "Probe phase active, but low-fidelity override is disabled."
+        return policy
+    if not is_reference_seed_name(task.get("seed_name")):
+        policy["reason"] = "Probe phase active, waiting for required reference runs before non-reference seeds."
+        return policy
+
+    policy["fidelity_override"] = {
+        "nfex": max(1, int(getattr(args, "probe_nfex", 5))),
+        "nfet": max(1, int(getattr(args, "probe_nfet", 2))),
+        "ncp": max(1, int(getattr(args, "probe_ncp", 1))),
+    }
+    policy["reason"] = (
+        f"Probe phase reference run {completed + 1}/{required}: forcing low-fidelity "
+        f"(nfex={policy['fidelity_override']['nfex']}, "
+        f"nfet={policy['fidelity_override']['nfet']}, "
+        f"ncp={policy['fidelity_override']['ncp']})."
+    )
+    return policy
+
+
 def has_any_feasible(results: List[Dict[str, object]]) -> bool:
     return any(bool(item.get("feasible")) for item in results)
 
@@ -1947,6 +2021,7 @@ def scientist_a_pick(
 
         Counted benchmark budget is {args.benchmark_hours:.1f} SMB hours with {args.search_hours:.1f} search hours and {args.validation_hours:.1f} validation hours.
         Search wall-hours used so far: {budget_used:.4f}
+        Hard policy: complete at least {int(getattr(args, "min_probe_reference_runs", 0))} reference-seed probe runs before proposing non-reference seed optimization.
 
         Current best result:
         {summarize_result(best) if best else "None yet."}
@@ -2231,7 +2306,13 @@ def scientist_b_review(
     return {"mode": "deterministic", **default}
 
 
-def execute_search_task(args: argparse.Namespace, task: Dict[str, object]) -> Dict[str, object]:
+def execute_search_task(
+    args: argparse.Namespace,
+    task: Dict[str, object],
+    *,
+    fidelity_override: Optional[Dict[str, int]] = None,
+    execution_note: str = "",
+) -> Dict[str, object]:
     base = configure_stage_args(make_stage_args("optimize-layouts"), args)
     tstep_bounds = rs.parse_bounds(base.tstep_bounds)
     ffeed_bounds = rs.parse_bounds(base.ffeed_bounds)
@@ -2249,8 +2330,18 @@ def execute_search_task(args: argparse.Namespace, task: Dict[str, object]) -> Di
         fraf_bounds=fraf_bounds,
         f1_bounds=f1_bounds,
     )
+    if isinstance(fidelity_override, dict):
+        candidate_args.nfex = max(1, int(fidelity_override.get("nfex", candidate_args.nfex)))
+        candidate_args.nfet = max(1, int(fidelity_override.get("nfet", candidate_args.nfet)))
+        candidate_args.ncp = max(1, int(fidelity_override.get("ncp", candidate_args.ncp)))
     candidate_args.run_name = f"{args.run_name}_search_nc_{'-'.join(str(v) for v in task['nc'])}_{candidate_args.seed_name}"
-    return rs.evaluate_optimized_layout(candidate_args, tuple(task["nc"]))
+    result = rs.evaluate_optimized_layout(candidate_args, tuple(task["nc"]))
+    if isinstance(fidelity_override, dict) or execution_note:
+        result["execution_policy"] = {
+            "fidelity_override": fidelity_override or {},
+            "note": execution_note,
+        }
+    return result
 
 
 def effective_search_task(args: argparse.Namespace, task: Dict[str, object]) -> Dict[str, object]:
@@ -2586,7 +2677,22 @@ def main() -> int:
                     research_path,
                     f"- search_result_run: executive_override_execute at {utc_now_text()} from task={task} to forced_task={forced_task}\n",
                 )
-                result = execute_search_task(args, forced_task)
+                forced_policy = search_execution_policy(args, search_tasks, search_results, forced_task)
+                if forced_policy.get("reason"):
+                    append_research(
+                        research_path,
+                        f"- execution_policy: {forced_policy.get('reason')}\n",
+                    )
+                result = execute_search_task(
+                    args,
+                    forced_task,
+                    fidelity_override=(
+                        forced_policy.get("fidelity_override")
+                        if isinstance(forced_policy.get("fidelity_override"), dict)
+                        else None
+                    ),
+                    execution_note=str(forced_policy.get("reason", "")),
+                )
                 result["executive_forced"] = True
                 result["executive_forced_from_task"] = task
                 search_results.append(result)
@@ -2613,7 +2719,22 @@ def main() -> int:
                 continue
 
             tried.add(task_key)
-            result = execute_search_task(args, task)
+            execution_policy = search_execution_policy(args, search_tasks, search_results, task)
+            if execution_policy.get("reason"):
+                append_research(
+                    research_path,
+                    f"- execution_policy: {execution_policy.get('reason')}\n",
+                )
+            result = execute_search_task(
+                args,
+                task,
+                fidelity_override=(
+                    execution_policy.get("fidelity_override")
+                    if isinstance(execution_policy.get("fidelity_override"), dict)
+                    else None
+                ),
+                execution_note=str(execution_policy.get("reason", "")),
+            )
             search_results.append(result)
             persist_result_to_sqlite(sqlite_conn, args.run_name, "search", result)
             append_result_research(research_path, result, "search")
@@ -2701,6 +2822,12 @@ def main() -> int:
                 if search_tasks
                 else 0,
                 "completed_reference_runs": reference_probe_runs_completed(search_results),
+                "probe_low_fidelity_enabled": bool(int(args.probe_low_fidelity_enabled)),
+                "probe_low_fidelity": {
+                    "nfex": int(args.probe_nfex),
+                    "nfet": int(args.probe_nfet),
+                    "ncp": int(args.probe_ncp),
+                },
             },
             "llm_conversations": {
                 "path": str(conversation_artifact.resolve()),
