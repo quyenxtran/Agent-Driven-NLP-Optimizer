@@ -195,6 +195,7 @@ export SMB_PROJECT_TARGET_RECOVERY_MA="${SMB_PROJECT_TARGET_RECOVERY_MA:-0.85}"
 export SMB_BENCHMARK_HOURS="${SMB_BENCHMARK_HOURS:-12.0}"
 export SMB_SEARCH_BUDGET_HOURS="${SMB_SEARCH_BUDGET_HOURS:-10.0}"
 export SMB_VALIDATION_BUDGET_HOURS="${SMB_VALIDATION_BUDGET_HOURS:-2.0}"
+export SMB_MIN_PROBE_REFERENCE_RUNS="${SMB_MIN_PROBE_REFERENCE_RUNS:-3}"
 export SMB_EXECUTIVE_CONTROLLER_ENABLED="${SMB_EXECUTIVE_CONTROLLER_ENABLED:-1}"
 export SMB_EXECUTIVE_TRIGGER_REJECTS="${SMB_EXECUTIVE_TRIGGER_REJECTS:-1}"
 export SMB_EXECUTIVE_FORCE_AFTER_REJECTS="${SMB_EXECUTIVE_FORCE_AFTER_REJECTS:-2}"
@@ -527,6 +528,7 @@ cat > "${ARTIFACT_DIR}/compute_manifest.${SLURM_JOB_ID:-local}.md" <<EOF
 - benchmark_hours: ${SMB_BENCHMARK_HOURS}
 - search_budget_hours: ${SMB_SEARCH_BUDGET_HOURS}
 - validation_budget_hours: ${SMB_VALIDATION_BUDGET_HOURS}
+- min_probe_reference_runs: ${SMB_MIN_PROBE_REFERENCE_RUNS}
 - executive_controller_enabled: ${SMB_EXECUTIVE_CONTROLLER_ENABLED}
 - executive_trigger_rejects: ${SMB_EXECUTIVE_TRIGGER_REJECTS}
 - executive_force_after_rejects: ${SMB_EXECUTIVE_FORCE_AFTER_REJECTS}
@@ -578,7 +580,7 @@ echo "Python executable: ${VENV_PY}"
 echo "Compute summary: ${SMB_COMPUTE_SUMMARY}"
 echo "Force MUMPS only: ${SMB_FORCE_MUMPS_ONLY}"
 echo "Solver selection: solver_name=${SMB_SOLVER_NAME}, linear_solver=${SMB_LINEAR_SOLVER}"
-echo "Agent budget: benchmark=${SMB_BENCHMARK_HOURS}h search=${SMB_SEARCH_BUDGET_HOURS}h validation=${SMB_VALIDATION_BUDGET_HOURS}h"
+echo "Agent budget: benchmark=${SMB_BENCHMARK_HOURS}h search=${SMB_SEARCH_BUDGET_HOURS}h validation=${SMB_VALIDATION_BUDGET_HOURS}h min_probe_reference_runs=${SMB_MIN_PROBE_REFERENCE_RUNS}"
 echo "Executive live monitor: enabled=${SMB_EXECUTIVE_LIVE_MONITOR} poll_s=${SMB_EXECUTIVE_MONITOR_POLL_SECONDS} window_iters=${SMB_EXECUTIVE_MONITOR_WINDOW_ITERS} stall_eps=${SMB_EXECUTIVE_MONITOR_STALL_EPS}"
 echo "Executive watchdog: enabled=${SMB_EXECUTIVE_WATCHDOG_ENABLED} min_iters=${SMB_EXECUTIVE_WATCHDOG_MIN_ITERS} stall_windows=${SMB_EXECUTIVE_WATCHDOG_STALL_WINDOWS} max_inf_du=${SMB_EXECUTIVE_WATCHDOG_MAX_INF_DU} max_mumps_realloc=${SMB_EXECUTIVE_WATCHDOG_MAX_MUMPS_REALLOC}"
 echo "Per-solve walltime cap (seconds): ${SMB_MAX_SOLVE_SECONDS}"

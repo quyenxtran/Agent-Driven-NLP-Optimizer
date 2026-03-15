@@ -89,6 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=int(os.environ.get("SMB_EXECUTIVE_TOP_K_LOCK", "5")),
     )
+    parser.add_argument(
+        "--min-probe-reference-runs",
+        type=int,
+        default=int(os.environ.get("SMB_MIN_PROBE_REFERENCE_RUNS", "3")),
+    )
     parser.add_argument("--llm-timeout-seconds", type=float, default=float(os.environ.get("SMB_LLM_TIMEOUT_SECONDS", "300")))
     parser.add_argument("--llm-max-retries", type=int, default=int(os.environ.get("SMB_LLM_MAX_RETRIES", "2")))
     parser.add_argument(
@@ -1640,6 +1645,76 @@ def deterministic_select(tasks: List[Dict[str, object]], tried: set[Tuple[Tuple[
     return 0
 
 
+def is_reference_seed_name(seed_name: object) -> bool:
+    return str(seed_name or "").strip().lower() == "reference"
+
+
+def reference_probe_runs_completed(results: List[Dict[str, object]]) -> int:
+    return sum(1 for item in results if is_reference_seed_name(item.get("seed_name")))
+
+
+def first_untried_reference_index(
+    tasks: List[Dict[str, object]],
+    tried: set[Tuple[Tuple[int, ...], str]],
+) -> Optional[int]:
+    for idx in ranked_reference_indices(tasks):
+        task = tasks[idx]
+        key = (tuple(task["nc"]), str(task["seed_name"]))
+        if key not in tried:
+            return idx
+    return None
+
+
+def apply_probe_reference_gate(
+    args: argparse.Namespace,
+    tasks: List[Dict[str, object]],
+    tried: set[Tuple[Tuple[int, ...], str]],
+    search_results: List[Dict[str, object]],
+    requested_idx: int,
+) -> Tuple[int, Optional[Dict[str, object]]]:
+    min_required = max(0, int(getattr(args, "min_probe_reference_runs", 0)))
+    if min_required <= 0:
+        return requested_idx, None
+
+    total_reference_tasks = len(ranked_reference_indices(tasks))
+    if total_reference_tasks <= 0:
+        return requested_idx, None
+
+    required = min(min_required, total_reference_tasks)
+    completed = reference_probe_runs_completed(search_results)
+    if completed >= required:
+        return requested_idx, None
+
+    requested_task = tasks[requested_idx]
+    if is_reference_seed_name(requested_task.get("seed_name")):
+        return requested_idx, None
+
+    forced_idx = first_untried_reference_index(tasks, tried)
+    if forced_idx is None:
+        return requested_idx, {
+            "applied": False,
+            "reason": (
+                f"Probe gate active ({completed}/{required}) but no untried reference task remains; "
+                "cannot enforce further reference probing."
+            ),
+            "completed_reference_runs": completed,
+            "required_reference_runs": required,
+        }
+
+    forced_task = tasks[forced_idx]
+    return forced_idx, {
+        "applied": True,
+        "reason": (
+            f"Probe gate enforced: completed_reference_runs={completed}/{required}. "
+            f"Blocked non-reference seed '{requested_task.get('seed_name')}' and forced reference probe."
+        ),
+        "completed_reference_runs": completed,
+        "required_reference_runs": required,
+        "requested_task": requested_task,
+        "forced_task": forced_task,
+    }
+
+
 def has_any_feasible(results: List[Dict[str, object]]) -> bool:
     return any(bool(item.get("feasible")) for item in results)
 
@@ -2384,7 +2459,7 @@ def main() -> int:
                     search_tasks,
                     search_results,
                     tried,
-                    optimize_stage_args,
+                    args,
                     objectives_excerpt,
                     soul_excerpt,
                     code_context_excerpt,
@@ -2420,10 +2495,25 @@ def main() -> int:
                         "Reject if normalized_total_violation does not improve against current best evidence.",
                     ],
                 }
+            idx, probe_gate_note = apply_probe_reference_gate(
+                args,
+                search_tasks,
+                tried,
+                search_results,
+                idx,
+            )
             task = search_tasks[idx]
             task_key = (tuple(task["nc"]), str(task["seed_name"]))
             if task_key in tried:
                 break
+            if probe_gate_note is not None:
+                a_note = dict(a_note)
+                a_note["probe_gate"] = probe_gate_note
+                priority_updates = normalize_text_list(a_note.get("priority_updates"), max_items=10)
+                gate_reason = str(probe_gate_note.get("reason", "")).strip()
+                if gate_reason:
+                    priority_updates.append(gate_reason)
+                    a_note["priority_updates"] = normalize_text_list(priority_updates, max_items=10)
             scientist_a_log.append({"task": task, "decision": a_note})
 
             effective_task = effective_search_task(args, task)
@@ -2434,7 +2524,7 @@ def main() -> int:
                     task,
                     effective_task,
                     best_so_far,
-                    optimize_stage_args,
+                    args,
                     code_context_excerpt,
                     compute_context_excerpt,
                     constraint_context_excerpt,
@@ -2600,6 +2690,17 @@ def main() -> int:
                     for item in executive_log
                     if str((item.get("decision") or {}).get("decision", "")).lower() == "override_execute"
                 ),
+            },
+            "probe_reference_policy": {
+                "min_probe_reference_runs": int(args.min_probe_reference_runs),
+                "available_reference_tasks": len(ranked_reference_indices(search_tasks)),
+                "required_reference_runs": min(
+                    int(args.min_probe_reference_runs),
+                    len(ranked_reference_indices(search_tasks)),
+                )
+                if search_tasks
+                else 0,
+                "completed_reference_runs": reference_probe_runs_completed(search_results),
             },
             "llm_conversations": {
                 "path": str(conversation_artifact.resolve()),
