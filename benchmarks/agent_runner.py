@@ -577,6 +577,31 @@ def text_mentions_metric_signals(items: Sequence[str]) -> bool:
     return any(pattern.search(str(item)) for item in items)
 
 
+def text_mentions_numeric_values(items: Sequence[str]) -> bool:
+    pattern = re.compile(r"[-+]?\d*\.?\d+(?:e[-+]?\d+)?", flags=re.IGNORECASE)
+    return any(pattern.search(str(item)) for item in items)
+
+
+def text_mentions_required_labels(items: Sequence[str], labels: Sequence[str]) -> bool:
+    if not labels:
+        return True
+    blob = " ".join(str(item) for item in items)
+    return all(str(label) in blob for label in labels)
+
+
+def text_mentions_flow_signals(items: Sequence[str]) -> bool:
+    pattern = re.compile(r"(Ffeed|F1|Fdes|Fex|Fraf|tstep|flow|F2|F4)", flags=re.IGNORECASE)
+    return any(pattern.search(str(item)) for item in items)
+
+
+def text_mentions_physics_signals(items: Sequence[str]) -> bool:
+    pattern = re.compile(
+        r"(mass\s*balance|mass\s*transfer|adsorption|desorption|zone|selectivity|isotherm|equilibrium|transport|hydrodynamic|flow\s*split|residence)",
+        flags=re.IGNORECASE,
+    )
+    return any(pattern.search(str(item)) for item in items)
+
+
 def extract_nc_mentions(text: str) -> set[Tuple[int, int, int, int]]:
     mentions: set[Tuple[int, int, int, int]] = set()
     if not text:
@@ -1429,6 +1454,18 @@ def append_iteration_research(
         lines.append("- scientist_a_comparison_to_previous:")
         for item in a_compare:
             lines.append(f"  - {item}")
+    a_last_two = normalize_text_list(a_note.get("last_two_run_comparison"), max_items=6)
+    if a_last_two:
+        lines.append("- scientist_a_last_two_run_comparison:")
+        for item in a_last_two:
+            lines.append(f"  - {item}")
+    a_flow = normalize_text_list(a_note.get("flowrate_comparison"), max_items=8)
+    if a_flow:
+        lines.append("- scientist_a_flowrate_comparison:")
+        for item in a_flow:
+            lines.append(f"  - {item}")
+    if str(a_note.get("physics_rationale", "")).strip():
+        lines.append(f"- scientist_a_physics_rationale: {str(a_note.get('physics_rationale'))}")
     a_evidence = normalize_text_list(a_note.get("evidence"), max_items=8)
     if a_evidence:
         lines.append("- scientist_a_evidence:")
@@ -1451,6 +1488,18 @@ def append_iteration_research(
         lines.append("- scientist_b_comparison_assessment:")
         for item in b_compare:
             lines.append(f"  - {item}")
+    b_last_two = normalize_text_list(b_note.get("last_two_run_audit"), max_items=6)
+    if b_last_two:
+        lines.append("- scientist_b_last_two_run_audit:")
+        for item in b_last_two:
+            lines.append(f"  - {item}")
+    b_flow = normalize_text_list(b_note.get("flowrate_audit"), max_items=8)
+    if b_flow:
+        lines.append("- scientist_b_flowrate_audit:")
+        for item in b_flow:
+            lines.append(f"  - {item}")
+    if str(b_note.get("physics_audit", "")).strip():
+        lines.append(f"- scientist_b_physics_audit: {str(b_note.get('physics_audit'))}")
     b_nc_assess = normalize_text_list(b_note.get("nc_strategy_assessment"), max_items=8)
     if b_nc_assess:
         lines.append("- scientist_b_nc_strategy_assessment:")
@@ -1716,6 +1765,31 @@ def summarize_result(result: Dict[str, object]) -> str:
         f"prod={productivity} purity={purity} rGA={rga} rMA={rma} "
         f"flow={flow}"
     )
+
+
+def recent_two_run_review_context(results: List[Dict[str, object]]) -> Tuple[str, List[str]]:
+    if not results:
+        return "none", []
+    recent = results[-2:]
+    labels: List[str] = []
+    lines: List[str] = []
+    for idx, item in enumerate(recent, start=1):
+        label = f"R-{idx}"
+        labels.append(label)
+        termination = ""
+        solver = item.get("solver")
+        if isinstance(solver, dict):
+            termination = str(solver.get("termination_condition", ""))
+        lines.append(
+            f"- {label}: run_name={item.get('run_name')} nc={item.get('nc')} status={item.get('status')} "
+            f"termination={termination} feasible={item.get('feasible')} "
+            f"prod={safe_result_metric(item, 'productivity_ex_ga_ma')} "
+            f"purity={safe_result_metric(item, 'purity_ex_meoh_free')} "
+            f"rGA={safe_result_metric(item, 'recovery_ex_GA')} "
+            f"rMA={safe_result_metric(item, 'recovery_ex_MA')} "
+            f"viol={effective_violation(item)}"
+        )
+    return "\n".join(lines), labels
 
 
 def deterministic_select(tasks: List[Dict[str, object]], tried: set[Tuple[Tuple[int, ...], str]]) -> int:
@@ -2140,6 +2214,7 @@ def scientist_a_pick(
         return default_index, {"mode": "deterministic", "reason": "No remaining tasks."}
 
     best = rank_any_results(results)[0] if results else None
+    recent_two_block, recent_two_labels = recent_two_run_review_context(results)
     prompt_warning = ""
     try:
         prompt = textwrap.dedent(
@@ -2186,10 +2261,16 @@ def scientist_a_pick(
             Current best result:
             {summarize_result(best) if best else "None yet."}
 
+            Recent two completed runs (must be reviewed deeply when available):
+            {recent_two_block}
+
             Required rigor:
             - compare candidate NC against at least two alternative NC layouts from the strategy board
             - compare candidate against previous result evidence (current best + recent failure when available)
             - include quantitative metric evidence in comparisons (at least one of: productivity, purity, recovery, violation, feasible/J)
+            - when two prior runs exist, include explicit deep comparison to BOTH R-1 and R-2 using run_name and metric deltas
+            - include explicit flowrate comparisons (Ffeed/F1/Fdes/Fex/Fraf/tstep) across at least two prior runs
+            - include physics-based rationale (mass balance, zone allocation effects, adsorption/desorption/selectivity), not rank-only claims
             - include explicit compute/budget impact and stopping/failure criteria
 
             Remaining candidate shortlist:
@@ -2201,6 +2282,9 @@ def scientist_a_pick(
               "reason": "<brief reason>",
               "evidence": ["<specific evidence item>", "..."],
               "comparison_to_previous": ["<explicit comparison to named prior run with metric/termination evidence>", "..."],
+              "last_two_run_comparison": ["<R-1: run_name + metrics + what changed>", "<R-2: run_name + metrics + what changed>"],
+              "flowrate_comparison": ["<flow deltas across runs with Ffeed/F1/Fdes/Fex/Fraf/tstep and implication>", "..."],
+              "physics_rationale": "<physics-based explanation using zones, flow splits, mass-transfer or mass-balance logic>",
               "nc_competitor_comparison": ["<candidate nc vs two alternatives with rationale>", "..."],
               "diagnostic_hypothesis": "<what this run is testing>",
               "failure_criteria": ["<what would make this a bad proposal>", "..."],
@@ -2215,9 +2299,10 @@ def scientist_a_pick(
         prompt = (
             "You are Scientist_A for SMB optimization. Return JSON only.\n\n"
             f"Current best result: {summarize_result(best) if best else 'None yet.'}\n"
+            f"Recent two completed runs:\n{recent_two_block}\n\n"
             f"Remaining candidate shortlist:\n{json.dumps(shortlist, indent=2)}\n\n"
             "Respond with keys: candidate_index, reason, evidence, comparison_to_previous, "
-            "nc_competitor_comparison, diagnostic_hypothesis, failure_criteria, fidelity, priority_updates, proposed_followups."
+            "last_two_run_comparison, flowrate_comparison, physics_rationale, nc_competitor_comparison, diagnostic_hypothesis, failure_criteria, fidelity, priority_updates, proposed_followups."
         )
     raw = client.chat(
         "You are an aggressive optimization scientist. Return JSON only and ground claims in evidence.",
@@ -2238,6 +2323,9 @@ def scientist_a_pick(
         if 0 <= idx < len(shortlist):
             evidence = normalize_text_list(data.get("evidence"), max_items=8)
             comparisons = normalize_text_list(data.get("comparison_to_previous"), max_items=8)
+            last_two_comparisons = normalize_text_list(data.get("last_two_run_comparison"), max_items=4)
+            flow_comparisons = normalize_text_list(data.get("flowrate_comparison"), max_items=6)
+            physics_rationale = str(data.get("physics_rationale", "")).strip()
             nc_comparisons = normalize_text_list(data.get("nc_competitor_comparison"), max_items=8)
             has_history = (len(results) > 0) or (sqlite_total_records_from_excerpt(sqlite_context_excerpt) > 0)
             if len(evidence) < 2:
@@ -2272,6 +2360,56 @@ def scientist_a_pick(
                         "Require quantitative metrics (productivity/purity/recovery/violation/feasible/J) in comparison-to-previous."
                     ],
                 }
+            if len(recent_two_labels) >= 2:
+                if len(last_two_comparisons) < 2:
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: missing required deep comparison of last two completed runs.",
+                        "priority_updates": [
+                            "Require explicit R-1 and R-2 comparison entries with run-level metrics before proposing new experiments."
+                        ],
+                    }
+                if not text_mentions_required_labels(last_two_comparisons, recent_two_labels):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: last-two comparison does not reference both required run labels (R-1 and R-2).",
+                        "priority_updates": [
+                            "Require both R-1 and R-2 references in last-two comparison block."
+                        ],
+                    }
+                if not text_mentions_metric_signals(last_two_comparisons) or not text_mentions_numeric_values(last_two_comparisons):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: last-two comparison is not metric- and number-grounded.",
+                        "priority_updates": [
+                            "Require numeric metric evidence (prod/purity/recovery/violation) in R-1 and R-2 analysis."
+                        ],
+                    }
+            if has_history:
+                if len(flow_comparisons) < 1 or not text_mentions_flow_signals(flow_comparisons):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: missing explicit flowrate comparison across prior runs.",
+                        "priority_updates": [
+                            "Require flowrate comparison using Ffeed/F1/Fdes/Fex/Fraf/tstep with implications."
+                        ],
+                    }
+                if not text_mentions_numeric_values(flow_comparisons):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: flowrate comparison lacks numeric evidence.",
+                        "priority_updates": [
+                            "Require numeric deltas in flowrate comparison (e.g., Ffeed, tstep changes)."
+                        ],
+                    }
+                if not physics_rationale or not text_mentions_physics_signals([physics_rationale]):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: missing physics-based rationale.",
+                        "priority_updates": [
+                            "Require physics rationale tied to mass balance, zone behavior, and adsorption/desorption effects."
+                        ],
+                    }
             if len(nc_comparisons) < 2:
                 return default_index, {
                     "mode": "deterministic",
@@ -2282,6 +2420,9 @@ def scientist_a_pick(
                 }
             data["evidence"] = evidence
             data["comparison_to_previous"] = comparisons
+            data["last_two_run_comparison"] = last_two_comparisons
+            data["flowrate_comparison"] = flow_comparisons
+            data["physics_rationale"] = physics_rationale
             data["nc_competitor_comparison"] = nc_comparisons
             data["failure_criteria"] = normalize_text_list(data.get("failure_criteria"), max_items=8)
             data["diagnostic_hypothesis"] = str(data.get("diagnostic_hypothesis", "")).strip()
@@ -2304,6 +2445,13 @@ def scientist_a_pick(
         "comparison_to_previous": [
             "LLM output unavailable; deterministic order selected after checking tried tasks and current best summary."
         ],
+        "last_two_run_comparison": [
+            "LLM output unavailable; no structured R-1/R-2 deep comparison was produced."
+        ],
+        "flowrate_comparison": [
+            "LLM output unavailable; no structured flowrate comparison was produced."
+        ],
+        "physics_rationale": "LLM output unavailable; no physics-based rationale was produced.",
         "nc_competitor_comparison": [
             "Deterministic fallback does not provide model-generated NC tradeoff reasoning."
         ],
@@ -2323,6 +2471,7 @@ def scientist_b_review(
     task: Dict[str, object],
     effective_task: Dict[str, object],
     best_result: Optional[Dict[str, object]],
+    results: List[Dict[str, object]],
     args: argparse.Namespace,
     codebase_context_excerpt: str,
     compute_context_excerpt: str,
@@ -2335,6 +2484,7 @@ def scientist_b_review(
 ) -> Dict[str, object]:
     default = deterministic_review(task, best_result)
     prompt_warning = ""
+    recent_two_block, recent_two_labels = recent_two_run_review_context(results)
     try:
         prompt = textwrap.dedent(
             f"""
@@ -2352,6 +2502,9 @@ def scientist_b_review(
 
             Current best result:
             {summarize_result(best_result) if best_result else "None yet."}
+
+            Recent two completed runs (must be reviewed deeply when available):
+            {recent_two_block}
 
             Codebase context summary:
             {codebase_context_excerpt}
@@ -2379,6 +2532,9 @@ def scientist_b_review(
               "decision": "approve" or "reject",
               "reason": "<brief reason>",
               "comparison_assessment": ["<explicit comparison vs prior run(s) with quantitative metric/termination evidence>", "..."],
+              "last_two_run_audit": ["<R-1: what happened, metrics, implications>", "<R-2: what happened, metrics, implications>"],
+              "flowrate_audit": ["<flow deltas across runs with Ffeed/F1/Fdes/Fex/Fraf/tstep and implications>", "..."],
+              "physics_audit": "<physics-grounded critique (mass balance, zone effects, adsorption/desorption/selectivity)>",
               "nc_strategy_assessment": ["<candidate nc vs alternatives and why>", "..."],
               "compute_assessment": "<budget/time parallelism assessment>",
               "counterarguments": ["<strongest objection 1>", "..."],
@@ -2392,10 +2548,11 @@ def scientist_b_review(
         prompt_warning = f"Prompt build warning: {type(exc).__name__}: {exc}"
         prompt = (
             "You are Scientist_B reviewer. Return JSON only with keys decision, reason, comparison_assessment, "
-            "nc_strategy_assessment, compute_assessment, counterarguments, required_checks, priority_updates, risk_flags.\n\n"
+            "last_two_run_audit, flowrate_audit, physics_audit, nc_strategy_assessment, compute_assessment, counterarguments, required_checks, priority_updates, risk_flags.\n\n"
             f"Proposed task:\n{json.dumps(task, indent=2)}\n\n"
             f"Effective candidate:\n{json.dumps(effective_task, indent=2)}\n\n"
-            f"Current best result: {summarize_result(best_result) if best_result else 'None yet.'}"
+            f"Current best result: {summarize_result(best_result) if best_result else 'None yet.'}\n\n"
+            f"Recent two completed runs:\n{recent_two_block}"
         )
     raw = client.chat(
         "You are a hard-nosed numerical reviewer. Return JSON only and challenge weak proposals.",
@@ -2413,6 +2570,9 @@ def scientist_b_review(
     data = client.extract_json(raw)
     if data and str(data.get("decision", "")).lower() in {"approve", "reject"}:
         comparisons = normalize_text_list(data.get("comparison_assessment"), max_items=8)
+        last_two_audit = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
+        flow_audit = normalize_text_list(data.get("flowrate_audit"), max_items=6)
+        physics_audit = str(data.get("physics_audit", "")).strip()
         nc_assessment = normalize_text_list(data.get("nc_strategy_assessment"), max_items=8)
         has_history = best_result is not None or (sqlite_total_records_from_excerpt(sqlite_context_excerpt) > 0)
         if not review_references_candidate_nc(
@@ -2459,6 +2619,50 @@ def scientist_b_review(
             data["comparison_assessment"] = comparisons or [
                 "No quantitative metric evidence referenced."
             ]
+        if len(recent_two_labels) >= 2:
+            if len(last_two_audit) < 2:
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: review must include deep audit of both last two completed runs."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: missing R-1/R-2 deep audit block."
+                ]
+                data["last_two_run_audit"] = last_two_audit or [
+                    "Missing required R-1 and R-2 deep audit."
+                ]
+            elif not text_mentions_required_labels(last_two_audit, recent_two_labels):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: last-two audit must explicitly reference both R-1 and R-2."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: R-1/R-2 labels not both present."
+                ]
+            elif not text_mentions_metric_signals(last_two_audit) or not text_mentions_numeric_values(last_two_audit):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: last-two audit is not metric- and number-grounded."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: R-1/R-2 audit lacks quantitative evidence."
+                ]
+        if has_history:
+            if len(flow_audit) < 1 or not text_mentions_flow_signals(flow_audit):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: review must include explicit flowrate audit across prior runs."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: missing flowrate audit (Ffeed/F1/Fdes/Fex/Fraf/tstep)."
+                ]
+                data["flowrate_audit"] = flow_audit or [
+                    "Missing explicit flowrate audit with named variables and implications."
+                ]
+            elif not text_mentions_numeric_values(flow_audit):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: flowrate audit lacks numeric evidence."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: flowrate audit has no numeric deltas."
+                ]
+            if not physics_audit or not text_mentions_physics_signals([physics_audit]):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: review must include physics-grounded critique."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: missing physics-based audit."
+                ]
         if len(nc_assessment) < 2:
             data["decision"] = "reject"
             data["reason"] = "Rejected: review must include NC strategy assessment against alternatives."
@@ -2487,6 +2691,9 @@ def scientist_b_review(
                     "Re-run review with explicit checks tied to bounds, solver behavior, and feasibility."
                 ]
         data["comparison_assessment"] = normalize_text_list(data.get("comparison_assessment"), max_items=8)
+        data["last_two_run_audit"] = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
+        data["flowrate_audit"] = normalize_text_list(data.get("flowrate_audit"), max_items=6)
+        data["physics_audit"] = str(data.get("physics_audit", "")).strip()
         data["nc_strategy_assessment"] = normalize_text_list(data.get("nc_strategy_assessment"), max_items=8)
         data["compute_assessment"] = str(data.get("compute_assessment", "")).strip()
         return {
@@ -2866,6 +3073,7 @@ def main() -> int:
                         task,
                         effective_task,
                         best_so_far,
+                        search_results,
                         args,
                         code_context_excerpt,
                         compute_context_excerpt,
