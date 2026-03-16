@@ -582,6 +582,40 @@ def text_mentions_numeric_values(items: Sequence[str]) -> bool:
     return any(pattern.search(str(item)) for item in items)
 
 
+def text_mentions_delta_metric_signals(items: Sequence[str]) -> bool:
+    blob = " ".join(str(item) for item in items)
+    required = [
+        r"(?:Δ|delta|d)[_\-\s]?(?:prod|productivity)",
+        r"(?:Δ|delta|d)[_\-\s]?purity",
+        r"(?:Δ|delta|d)[_\-\s]?rga",
+        r"(?:Δ|delta|d)[_\-\s]?rma",
+        r"(?:Δ|delta|d)[_\-\s]?(?:viol|violation)",
+    ]
+    return all(re.search(pattern, blob, flags=re.IGNORECASE) for pattern in required)
+
+
+def count_flow_signal_mentions(items: Sequence[str]) -> int:
+    flow_tokens = ("ffeed", "f1", "fdes", "fex", "fraf", "tstep")
+    blob = " ".join(str(item).lower() for item in items)
+    return sum(1 for token in flow_tokens if token in blob)
+
+
+def text_mentions_delta_flow_signals(items: Sequence[str], min_count: int = 3) -> bool:
+    if count_flow_signal_mentions(items) < min_count:
+        return False
+    blob = " ".join(str(item) for item in items)
+    pattern = re.compile(
+        r"(?:Δ|delta|d)[_\-\s]?(?:ffeed|f1|fdes|fex|fraf|tstep)",
+        flags=re.IGNORECASE,
+    )
+    return bool(pattern.search(blob))
+
+
+def text_mentions_run_name_signals(items: Sequence[str]) -> bool:
+    pattern = re.compile(r"(run_name=|run=|search_nc_|validate_|reference)", flags=re.IGNORECASE)
+    return any(pattern.search(str(item)) for item in items)
+
+
 def text_mentions_required_labels(items: Sequence[str], labels: Sequence[str]) -> bool:
     if not labels:
         return True
@@ -1464,6 +1498,11 @@ def append_iteration_research(
         lines.append("- scientist_a_flowrate_comparison:")
         for item in a_flow:
             lines.append(f"  - {item}")
+    a_deltas = normalize_text_list(a_note.get("delta_summary"), max_items=8)
+    if a_deltas:
+        lines.append("- scientist_a_delta_summary:")
+        for item in a_deltas:
+            lines.append(f"  - {item}")
     if str(a_note.get("physics_rationale", "")).strip():
         lines.append(f"- scientist_a_physics_rationale: {str(a_note.get('physics_rationale'))}")
     a_evidence = normalize_text_list(a_note.get("evidence"), max_items=8)
@@ -1498,8 +1537,15 @@ def append_iteration_research(
         lines.append("- scientist_b_flowrate_audit:")
         for item in b_flow:
             lines.append(f"  - {item}")
+    b_deltas = normalize_text_list(b_note.get("delta_audit"), max_items=8)
+    if b_deltas:
+        lines.append("- scientist_b_delta_audit:")
+        for item in b_deltas:
+            lines.append(f"  - {item}")
     if str(b_note.get("physics_audit", "")).strip():
         lines.append(f"- scientist_b_physics_audit: {str(b_note.get('physics_audit'))}")
+    if isinstance(b_note.get("counterproposal_run"), dict):
+        lines.append(f"- scientist_b_counterproposal_run: {b_note.get('counterproposal_run')}")
     b_nc_assess = normalize_text_list(b_note.get("nc_strategy_assessment"), max_items=8)
     if b_nc_assess:
         lines.append("- scientist_b_nc_strategy_assessment:")
@@ -2270,6 +2316,7 @@ def scientist_a_pick(
             - include quantitative metric evidence in comparisons (at least one of: productivity, purity, recovery, violation, feasible/J)
             - when two prior runs exist, include explicit deep comparison to BOTH R-1 and R-2 using run_name and metric deltas
             - include explicit flowrate comparisons (Ffeed/F1/Fdes/Fex/Fraf/tstep) across at least two prior runs
+            - include explicit delta vectors using this schema token style: Δprod, Δpurity, ΔrGA, ΔrMA, Δviol, ΔFfeed, ΔF1, ΔFdes, ΔFex, ΔFraf, Δtstep
             - include physics-based rationale (mass balance, zone allocation effects, adsorption/desorption/selectivity), not rank-only claims
             - include explicit compute/budget impact and stopping/failure criteria
 
@@ -2284,6 +2331,7 @@ def scientist_a_pick(
               "comparison_to_previous": ["<explicit comparison to named prior run with metric/termination evidence>", "..."],
               "last_two_run_comparison": ["<R-1: run_name + metrics + what changed>", "<R-2: run_name + metrics + what changed>"],
               "flowrate_comparison": ["<flow deltas across runs with Ffeed/F1/Fdes/Fex/Fraf/tstep and implication>", "..."],
+              "delta_summary": ["<vs R-1: Δprod=..., Δpurity=..., ΔrGA=..., ΔrMA=..., Δviol=..., ΔFfeed=..., ΔF1=..., ΔFdes=..., ΔFex=..., ΔFraf=..., Δtstep=...>", "<vs R-2: ...>", "<vs competitor nc=[...]: Δprod=..., Δpurity=..., ΔrGA=..., ΔrMA=..., Δviol=...>"],
               "physics_rationale": "<physics-based explanation using zones, flow splits, mass-transfer or mass-balance logic>",
               "nc_competitor_comparison": ["<candidate nc vs two alternatives with rationale>", "..."],
               "diagnostic_hypothesis": "<what this run is testing>",
@@ -2302,7 +2350,7 @@ def scientist_a_pick(
             f"Recent two completed runs:\n{recent_two_block}\n\n"
             f"Remaining candidate shortlist:\n{json.dumps(shortlist, indent=2)}\n\n"
             "Respond with keys: candidate_index, reason, evidence, comparison_to_previous, "
-            "last_two_run_comparison, flowrate_comparison, physics_rationale, nc_competitor_comparison, diagnostic_hypothesis, failure_criteria, fidelity, priority_updates, proposed_followups."
+            "last_two_run_comparison, flowrate_comparison, delta_summary, physics_rationale, nc_competitor_comparison, diagnostic_hypothesis, failure_criteria, fidelity, priority_updates, proposed_followups."
         )
     raw = client.chat(
         "You are an aggressive optimization scientist. Return JSON only and ground claims in evidence.",
@@ -2325,6 +2373,7 @@ def scientist_a_pick(
             comparisons = normalize_text_list(data.get("comparison_to_previous"), max_items=8)
             last_two_comparisons = normalize_text_list(data.get("last_two_run_comparison"), max_items=4)
             flow_comparisons = normalize_text_list(data.get("flowrate_comparison"), max_items=6)
+            delta_summary = normalize_text_list(data.get("delta_summary"), max_items=8)
             physics_rationale = str(data.get("physics_rationale", "")).strip()
             nc_comparisons = normalize_text_list(data.get("nc_competitor_comparison"), max_items=8)
             has_history = (len(results) > 0) or (sqlite_total_records_from_excerpt(sqlite_context_excerpt) > 0)
@@ -2385,6 +2434,46 @@ def scientist_a_pick(
                             "Require numeric metric evidence (prod/purity/recovery/violation) in R-1 and R-2 analysis."
                         ],
                     }
+                if not text_mentions_run_name_signals(last_two_comparisons):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: last-two comparison must cite explicit run names.",
+                        "priority_updates": [
+                            "Require run_name-level evidence in R-1/R-2 deep comparison block."
+                        ],
+                    }
+                if len(delta_summary) < 3:
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: missing required delta summary for R-1, R-2, and competitor.",
+                        "priority_updates": [
+                            "Require explicit delta summary entries for both prior runs and at least one competitor NC."
+                        ],
+                    }
+                if not text_mentions_required_labels(delta_summary, recent_two_labels):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: delta summary must reference both R-1 and R-2.",
+                        "priority_updates": [
+                            "Require R-1 and R-2 labels in delta summary block."
+                        ],
+                    }
+                if not text_mentions_delta_metric_signals(delta_summary):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: delta summary must include Δprod/Δpurity/ΔrGA/ΔrMA/Δviol.",
+                        "priority_updates": [
+                            "Require explicit metric delta vector for each deep comparison."
+                        ],
+                    }
+                if not text_mentions_delta_flow_signals(delta_summary, min_count=3):
+                    return default_index, {
+                        "mode": "deterministic",
+                        "reason": "Rejected LLM proposal: delta summary must include explicit flow deltas.",
+                        "priority_updates": [
+                            "Require explicit ΔFfeed/ΔF1/ΔFdes/ΔFex/ΔFraf/Δtstep signals."
+                        ],
+                    }
             if has_history:
                 if len(flow_comparisons) < 1 or not text_mentions_flow_signals(flow_comparisons):
                     return default_index, {
@@ -2418,10 +2507,19 @@ def scientist_a_pick(
                         "Require explicit candidate-vs-alternative NC comparisons before choosing next run."
                     ],
                 }
+            if not text_mentions_metric_signals(nc_comparisons) or not text_mentions_numeric_values(nc_comparisons):
+                return default_index, {
+                    "mode": "deterministic",
+                    "reason": "Rejected LLM proposal: NC competitor comparison must be metric- and number-grounded.",
+                    "priority_updates": [
+                        "Require quantitative competitor NC comparisons (productivity/purity/recovery/violation)."
+                    ],
+                }
             data["evidence"] = evidence
             data["comparison_to_previous"] = comparisons
             data["last_two_run_comparison"] = last_two_comparisons
             data["flowrate_comparison"] = flow_comparisons
+            data["delta_summary"] = delta_summary
             data["physics_rationale"] = physics_rationale
             data["nc_competitor_comparison"] = nc_comparisons
             data["failure_criteria"] = normalize_text_list(data.get("failure_criteria"), max_items=8)
@@ -2450,6 +2548,9 @@ def scientist_a_pick(
         ],
         "flowrate_comparison": [
             "LLM output unavailable; no structured flowrate comparison was produced."
+        ],
+        "delta_summary": [
+            "LLM output unavailable; no explicit delta summary (R-1/R-2/competitor) was produced."
         ],
         "physics_rationale": "LLM output unavailable; no physics-based rationale was produced.",
         "nc_competitor_comparison": [
@@ -2534,7 +2635,14 @@ def scientist_b_review(
               "comparison_assessment": ["<explicit comparison vs prior run(s) with quantitative metric/termination evidence>", "..."],
               "last_two_run_audit": ["<R-1: what happened, metrics, implications>", "<R-2: what happened, metrics, implications>"],
               "flowrate_audit": ["<flow deltas across runs with Ffeed/F1/Fdes/Fex/Fraf/tstep and implications>", "..."],
+              "delta_audit": ["<vs R-1: Δprod=..., Δpurity=..., ΔrGA=..., ΔrMA=..., Δviol=..., ΔFfeed=..., ΔF1=..., ΔFdes=..., ΔFex=..., ΔFraf=..., Δtstep=...>", "<vs R-2: ...>", "<proposal vs counterproposal: Δprod=..., Δpurity=..., ΔrGA=..., ΔrMA=..., Δviol=...>"],
               "physics_audit": "<physics-grounded critique (mass balance, zone effects, adsorption/desorption/selectivity)>",
+              "counterproposal_run": {{
+                "nc": [a,b,c,d],
+                "flow_adjustments": {{"Ffeed": <delta>, "F1": <delta>, "Fdes": <delta>, "Fex": <delta>, "Fraf": <delta>, "tstep": <delta>}},
+                "expected_metric_effect": {{"delta_productivity": <value>, "delta_purity": <value>, "delta_recovery_ga": <value>, "delta_recovery_ma": <value>, "delta_violation": <value>}},
+                "physics_justification": "<physics-based reason for this counterproposal>"
+              }},
               "nc_strategy_assessment": ["<candidate nc vs alternatives and why>", "..."],
               "compute_assessment": "<budget/time parallelism assessment>",
               "counterarguments": ["<strongest objection 1>", "..."],
@@ -2548,7 +2656,7 @@ def scientist_b_review(
         prompt_warning = f"Prompt build warning: {type(exc).__name__}: {exc}"
         prompt = (
             "You are Scientist_B reviewer. Return JSON only with keys decision, reason, comparison_assessment, "
-            "last_two_run_audit, flowrate_audit, physics_audit, nc_strategy_assessment, compute_assessment, counterarguments, required_checks, priority_updates, risk_flags.\n\n"
+            "last_two_run_audit, flowrate_audit, delta_audit, physics_audit, counterproposal_run, nc_strategy_assessment, compute_assessment, counterarguments, required_checks, priority_updates, risk_flags.\n\n"
             f"Proposed task:\n{json.dumps(task, indent=2)}\n\n"
             f"Effective candidate:\n{json.dumps(effective_task, indent=2)}\n\n"
             f"Current best result: {summarize_result(best_result) if best_result else 'None yet.'}\n\n"
@@ -2572,7 +2680,9 @@ def scientist_b_review(
         comparisons = normalize_text_list(data.get("comparison_assessment"), max_items=8)
         last_two_audit = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
         flow_audit = normalize_text_list(data.get("flowrate_audit"), max_items=6)
+        delta_audit = normalize_text_list(data.get("delta_audit"), max_items=8)
         physics_audit = str(data.get("physics_audit", "")).strip()
+        counterproposal = data.get("counterproposal_run")
         nc_assessment = normalize_text_list(data.get("nc_strategy_assessment"), max_items=8)
         has_history = best_result is not None or (sqlite_total_records_from_excerpt(sqlite_context_excerpt) > 0)
         if not review_references_candidate_nc(
@@ -2641,6 +2751,36 @@ def scientist_b_review(
                 data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
                     "Review quality risk: R-1/R-2 audit lacks quantitative evidence."
                 ]
+            elif not text_mentions_run_name_signals(last_two_audit):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: last-two audit must cite explicit run names."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: R-1/R-2 audit missing run_name references."
+                ]
+            if len(delta_audit) < 3:
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: review must include delta audit for R-1, R-2, and counterproposal."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: missing delta audit block."
+                ]
+            elif not text_mentions_required_labels(delta_audit, recent_two_labels):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: delta audit must explicitly reference both R-1 and R-2."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: delta audit missing R-1/R-2 labels."
+                ]
+            elif not text_mentions_delta_metric_signals(delta_audit):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: delta audit must include Δprod/Δpurity/ΔrGA/ΔrMA/Δviol."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: delta audit missing metric deltas."
+                ]
+            elif not text_mentions_delta_flow_signals(delta_audit, min_count=3):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: delta audit must include explicit flow deltas."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: delta audit missing flow deltas."
+                ]
         if has_history:
             if len(flow_audit) < 1 or not text_mentions_flow_signals(flow_audit):
                 data["decision"] = "reject"
@@ -2663,6 +2803,46 @@ def scientist_b_review(
                 data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
                     "Review quality risk: missing physics-based audit."
                 ]
+            if not isinstance(counterproposal, dict):
+                data["decision"] = "reject"
+                data["reason"] = "Rejected: review must include a structured counterproposal_run."
+                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                    "Review quality risk: missing counterproposal run object."
+                ]
+                data["counterproposal_run"] = {
+                    "nc": list(task.get("nc", [])) if isinstance(task.get("nc"), list) else [],
+                    "flow_adjustments": {"Ffeed": 0.0, "F1": 0.0, "Fdes": 0.0, "Fex": 0.0, "Fraf": 0.0, "tstep": 0.0},
+                    "expected_metric_effect": {
+                        "delta_productivity": 0.0,
+                        "delta_purity": 0.0,
+                        "delta_recovery_ga": 0.0,
+                        "delta_recovery_ma": 0.0,
+                        "delta_violation": 0.0,
+                    },
+                    "physics_justification": "Missing counterproposal output from reviewer.",
+                }
+            else:
+                cp_nc = counterproposal.get("nc")
+                cp_flow = counterproposal.get("flow_adjustments")
+                cp_effect = counterproposal.get("expected_metric_effect")
+                cp_physics = str(counterproposal.get("physics_justification", "")).strip()
+                valid_nc = isinstance(cp_nc, list) and len(cp_nc) == 4 and all(isinstance(v, (int, float)) for v in cp_nc)
+                flow_numeric_count = 0
+                if isinstance(cp_flow, dict):
+                    for key in ("Ffeed", "F1", "Fdes", "Fex", "Fraf", "tstep"):
+                        if isinstance(cp_flow.get(key), (int, float)):
+                            flow_numeric_count += 1
+                effect_numeric_count = 0
+                if isinstance(cp_effect, dict):
+                    for key in ("delta_productivity", "delta_purity", "delta_recovery_ga", "delta_recovery_ma", "delta_violation"):
+                        if isinstance(cp_effect.get(key), (int, float)):
+                            effect_numeric_count += 1
+                if not valid_nc or flow_numeric_count < 2 or effect_numeric_count < 3 or not text_mentions_physics_signals([cp_physics]):
+                    data["decision"] = "reject"
+                    data["reason"] = "Rejected: counterproposal_run is incomplete; require NC + numeric flow edits + expected metric deltas + physics basis."
+                    data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
+                        "Review quality risk: weak counterproposal detail."
+                    ]
         if len(nc_assessment) < 2:
             data["decision"] = "reject"
             data["reason"] = "Rejected: review must include NC strategy assessment against alternatives."
@@ -2693,7 +2873,10 @@ def scientist_b_review(
         data["comparison_assessment"] = normalize_text_list(data.get("comparison_assessment"), max_items=8)
         data["last_two_run_audit"] = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
         data["flowrate_audit"] = normalize_text_list(data.get("flowrate_audit"), max_items=6)
+        data["delta_audit"] = normalize_text_list(data.get("delta_audit"), max_items=8)
         data["physics_audit"] = str(data.get("physics_audit", "")).strip()
+        if isinstance(data.get("counterproposal_run"), dict):
+            data["counterproposal_run"] = data.get("counterproposal_run")
         data["nc_strategy_assessment"] = normalize_text_list(data.get("nc_strategy_assessment"), max_items=8)
         data["compute_assessment"] = str(data.get("compute_assessment", "")).strip()
         return {

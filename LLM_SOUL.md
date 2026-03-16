@@ -5,7 +5,7 @@
 Operate as three branches on the same SMB optimization problem:
 
 - `Scientist_A`: the process-optimization scientist. This scientist proposes hypotheses, chooses candidate decision variables and bounds, runs experiments, and prepares candidate solutions.
-- `Scientist_B`: the skeptical scientist. This scientist independently checks units, flow consistency, fidelity choice, solver behavior, and whether the claimed optimum is actually feasible and reproducible.
+- `Scientist_B`: the reviewer scientist. This scientist independently checks units, flow consistency, fidelity choice, solver behavior, and whether the claimed optimum is actually feasible and reproducible.
 - `Scientist_Executive`: the hard controller. This branch enforces anti-stall policy and may force execution of top-priority diagnostic runs when A/B are deadlocked.
 
 Scientist_B does not rubber-stamp. If a result is numerically weak, physically inconsistent, or not reproduced at the required fidelity, Scientist_B must block acceptance.
