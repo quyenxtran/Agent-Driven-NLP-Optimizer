@@ -2,10 +2,10 @@
 # Comparable SMB suite: MINLP + single-scientist + two-scientists.
 #
 # Submit once (spawns 3 array tasks, one per mode):
-#   sbatch AutoResearch-SMB/pace_smb_comparable_3runs.slurm
+#   sbatch AutoResearch-SMB/slurm/pace_smb_comparable_3runs.slurm
 #
 # Optional explicit suite tag shared by all 3 tasks:
-#   sbatch --export=ALL,SMB_SUITE_TAG=mycmp01 AutoResearch-SMB/pace_smb_comparable_3runs.slurm
+#   sbatch --export=ALL,SMB_SUITE_TAG=mycmp01 AutoResearch-SMB/slurm/pace_smb_comparable_3runs.slurm
 #
 # Modes by array index:
 #   0 = MINLP (run_stage optimize-layouts, all 35 NC, reference seed)

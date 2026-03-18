@@ -2,27 +2,27 @@
 # Generic SMB stage runner for PACE.
 #
 # Submit one stage at a time:
-# sbatch --export=ALL,SMB_STAGE=solver-check AutoResearch-SMB/pace_smb_stage_runner.slurm
-# sbatch --export=ALL,SMB_STAGE=reference-eval,SMB_RUN_NAME=reference_hi_fi AutoResearch-SMB/pace_smb_stage_runner.slurm
-# sbatch --export=ALL,SMB_STAGE=reference-eval,SMB_NFEX=6,SMB_NFET=3,SMB_NCP=2,SMB_RUN_NAME=reference_med_fi AutoResearch-SMB/pace_smb_stage_runner.slurm
-# sbatch --export=ALL,SMB_STAGE=nc-screen,SMB_NC_LIBRARY="1,2,3,2;2,2,2,2;1,3,2,2",SMB_RUN_NAME=nc_smoke AutoResearch-SMB/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=solver-check AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=reference-eval,SMB_RUN_NAME=reference_hi_fi AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=reference-eval,SMB_NFEX=6,SMB_NFET=3,SMB_NCP=2,SMB_RUN_NAME=reference_med_fi AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=nc-screen,SMB_NC_LIBRARY="1,2,3,2;2,2,2,2;1,3,2,2",SMB_RUN_NAME=nc_smoke AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 # export SMB_FFEED_LIBRARY='1.0,1.2,1.4'
 # export SMB_F1_LIBRARY='1.6,1.8,2.0'
 # export SMB_FDES_LIBRARY='0.8,1.0,1.2'
 # export SMB_FEX_LIBRARY='0.6,0.8,1.0'
 # export SMB_TSTEP_LIBRARY='8.5,9.5,10.5'
-# sbatch --export=ALL,SMB_STAGE=flow-screen,SMB_RUN_NAME=flow_smoke,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=flow-screen,SMB_RUN_NAME=flow_smoke,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 # export SMB_NC_LIBRARY='1,2,3,2;2,2,2,2;1,3,2,2'
 # export SMB_SEED_LIBRARY='notebook'
-# sbatch --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_baseline,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_baseline,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 # export SMB_NC_LIBRARY='all'
 # export SMB_SEED_LIBRARY='notebook'
 # export SMB_TSTEP='9.4'
 # export SMB_TSTEP_BOUNDS='9.4,9.4'
-# sbatch --time=05:00:00 --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_all_nc_5h,SMB_SOLVER_NAME=ipopt,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/pace_smb_stage_runner.slurm
+# sbatch --time=05:00:00 --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_all_nc_5h,SMB_SOLVER_NAME=ipopt,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 #
 # Override account, partition, or time at submit time if needed:
-# sbatch --account=gts-sn73 --qos=inferno --partition=cpu-amd --time=08:00:00 --export=ALL,SMB_STAGE=reference-eval AutoResearch-SMB/pace_smb_stage_runner.slurm
+# sbatch --account=gts-sn73 --qos=inferno --partition=cpu-amd --time=08:00:00 --export=ALL,SMB_STAGE=reference-eval AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 
 #SBATCH --job-name=smb-stage
 #SBATCH -A gts-sn73
@@ -46,18 +46,14 @@ if [[ -z "${DEFAULT_REPO_ROOT}" ]]; then
 fi
 REPO_ROOT="${REPO_ROOT:-${DEFAULT_REPO_ROOT}}"
 if [[ -z "${AUTORESEARCH_ROOT:-}" ]]; then
-  if [[ -f "${REPO_ROOT}/benchmarks/run_stage.py" && -d "${REPO_ROOT}/SembaSMB" ]]; then
+  if [[ -f "${REPO_ROOT}/benchmarks/run_stage.py" && -d "${REPO_ROOT}/src/sembasmb" ]]; then
     AUTORESEARCH_ROOT="${REPO_ROOT}"
   else
     AUTORESEARCH_ROOT="${REPO_ROOT}/AutoResearch-SMB"
   fi
 fi
 if [[ -z "${SMB_ROOT:-}" ]]; then
-  if [[ -d "${AUTORESEARCH_ROOT}/SembaSMB" ]]; then
-    SMB_ROOT="${AUTORESEARCH_ROOT}/SembaSMB"
-  else
-    SMB_ROOT="${REPO_ROOT}/SembaSMB"
-  fi
+  SMB_ROOT="${AUTORESEARCH_ROOT}/src"
 fi
 
 DEFAULT_SCRATCH_ROOT="${PACE_SCRATCH_ROOT:-${SCRATCH:-}}"
@@ -86,7 +82,6 @@ if [[ -z "${VENV_PY:-}" ]]; then
   venv_candidates+=("${SMB_ROOT}/.venv/bin/python")
   if [[ -n "${HOME:-}" ]]; then
     venv_candidates+=("${HOME}/AutoResearch-SMB/.venv/bin/python")
-    venv_candidates+=("${HOME}/SembaSMB/.venv/bin/python")
   fi
 
   for candidate in "${venv_candidates[@]}"; do
@@ -113,7 +108,6 @@ if [[ ! -x "${VENV_PY:-}" ]]; then
   echo "  - ${SMB_ROOT}/.venv/bin/python"
   if [[ -n "${HOME:-}" ]]; then
     echo "  - ${HOME}/AutoResearch-SMB/.venv/bin/python"
-    echo "  - ${HOME}/SembaSMB/.venv/bin/python"
   fi
   echo "Override with --export=ALL,VENV_DIR=/path/to/.venv or VENV_PY=/path/to/python"
   exit 1
@@ -235,7 +229,7 @@ fi
 
 echo "Repository root: ${REPO_ROOT}"
 echo "AutoResearch-SMB root: ${AUTORESEARCH_ROOT}"
-echo "SembaSMB root: ${SMB_ROOT}"
+echo "sembasmb src root: ${SMB_ROOT}"
 echo "Python executable: ${VENV_PY}"
 echo "ipopt executable: $(command -v ipopt || echo not-found)"
 echo "ipopt_sens executable: $(command -v ipopt_sens || echo not-found)"

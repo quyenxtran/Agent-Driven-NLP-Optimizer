@@ -2,10 +2,10 @@
 # Two-scientists SMB run (24h, GPU for local LLM), comparable thresholds.
 #
 # Submit:
-#   sbatch AutoResearch-SMB/pace_smb_two_scientists_24h.slurm
+#   sbatch AutoResearch-SMB/slurm/pace_smb_two_scientists_24h.slurm
 #
 # Optional shared tag:
-#   sbatch --export=ALL,SMB_SUITE_TAG=cmp01 AutoResearch-SMB/pace_smb_two_scientists_24h.slurm
+#   sbatch --export=ALL,SMB_SUITE_TAG=cmp01 AutoResearch-SMB/slurm/pace_smb_two_scientists_24h.slurm
 
 #SBATCH --job-name=smb-two-24h
 #SBATCH -A gts-sn73

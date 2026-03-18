@@ -1,0 +1,373 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Structured hypothesis tracker for SMB optimization. Each hypothesis tracks its claim, supporting/refuting simulation evidence, and lifecycle status. The AI agent should read this before proposing new experiments and update simulation_results after each run.",
+  "_status_values": ["pending_validation", "active_testing", "confirmed", "rejected", "retired"],
+  "_confidence_values": ["very_low", "low", "low_medium", "medium", "high", "very_high"],
+  "_result_verdict_values": ["supports", "refutes", "inconclusive", "partial_support"],
+
+  "hypotheses": [
+
+    {
+      "id": "H1",
+      "category": "flow_optimization",
+      "title": "Fdes Purity Impact is Non-Linear",
+      "statement": "Increasing Fdes has diminishing returns on recovery improvement while purity degradation accelerates at higher flow rates.",
+      "rationale": "Initial Fdes increases provide significant recovery gains with minimal purity loss, but system approaches saturation where additional desorbent primarily displaces impurities.",
+      "test_plan": {
+        "approach": "Systematically vary Fdes from 1.0 to 2.5 mL/min in 0.1 mL increments",
+        "controlled_variables": ["Ffeed", "F1", "Fex", "tstep", "nc"],
+        "measured_outputs": ["purity_ex_meoh_free", "recovery_ga", "recovery_ma"]
+      },
+      "validation_criteria": [
+        "Recovery curve shows diminishing returns (second derivative < 0)",
+        "Purity curve shows accelerating degradation (second derivative < 0)",
+        "Clear inflection point identified with statistical significance"
+      ],
+      "status": "active_testing",
+      "confidence": "low_medium",
+      "priority": "high",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Preliminary data suggests non-linear behavior but insufficient data points for confirmation. Needs systematic sweep."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H2",
+      "category": "flow_optimization",
+      "title": "tstep Optimization is Layout-Dependent",
+      "statement": "Optimal tstep/Ffeed ratio varies significantly between different NC layouts due to zone volume differences.",
+      "rationale": "Different layouts have varying zone volumes, requiring different residence times for equivalent separation efficiency.",
+      "test_plan": {
+        "approach": "For each NC layout, optimize tstep while keeping Ffeed constant. Calculate optimal tstep/Ffeed ratio per layout.",
+        "controlled_variables": ["Ffeed", "F1", "Fdes", "Fex"],
+        "measured_outputs": ["tstep_optimal", "purity_ex_meoh_free", "recovery_ga", "recovery_ma"]
+      },
+      "validation_criteria": [
+        "Statistically significant differences in optimal ratios between layouts",
+        "Ratio differences correlate with zone volume ratios",
+        "Layout-specific optimization outperforms universal ratio"
+      ],
+      "status": "pending_validation",
+      "confidence": "low",
+      "priority": "medium",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Layout (1,2,3,2) appears to prefer longer tstep than (2,2,2,2) but sample size is too small to conclude."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H3",
+      "category": "flow_optimization",
+      "title": "F1 Maximum is Limited by Zone 2/3 Interface Stability",
+      "statement": "F1 cannot be increased beyond a certain point without destabilizing the Zone 2/3 interface, leading to purity collapse.",
+      "rationale": "High internal circulation rates may disrupt the concentration gradient between adsorption and desorption zones.",
+      "test_plan": {
+        "approach": "Incrementally increase F1 while monitoring zone interface sharpness. Identify F1 where purity begins rapid decline.",
+        "controlled_variables": ["Ffeed", "Fdes", "Fex", "tstep"],
+        "measured_outputs": ["purity_ex_meoh_free", "zone_concentration_profiles"]
+      },
+      "validation_criteria": [
+        "Clear threshold F1 value identified where purity drops >5%",
+        "Concentration profile shows interface broadening at threshold",
+        "Threshold correlates with zone dimensions"
+      ],
+      "status": "pending_validation",
+      "confidence": "low",
+      "priority": "medium",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": {"F1": 4.5},
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "F1 increases beyond 4.5 mL/min show inconsistent results. Threshold not yet pinpointed."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H4",
+      "category": "constraint_interaction",
+      "title": "Purity Constraint is More Sensitive to Flow Perturbations than Recovery",
+      "statement": "Small flow changes have larger impact on purity than on recovery, making purity the limiting constraint in most optimizations.",
+      "rationale": "Purity requires sharp concentration fronts, which are more easily disrupted than the integrated recovery metric.",
+      "test_plan": {
+        "approach": "Apply identical flow perturbations and measure sensitivity of purity vs recovery. Calculate sensitivity coefficients at multiple operating points.",
+        "controlled_variables": ["base_operating_point"],
+        "measured_outputs": ["d_purity_d_flow", "d_recovery_d_flow", "sensitivity_ratio"]
+      },
+      "validation_criteria": [
+        "Purity sensitivity coefficient consistently higher than recovery coefficient",
+        "Difference statistically significant across multiple operating points",
+        "Sensitivity ratio > 1.5 in most cases"
+      ],
+      "status": "active_testing",
+      "confidence": "low",
+      "priority": "high",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Observational evidence suggests purity is harder to maintain but no controlled perturbation study done yet."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H5",
+      "category": "constraint_interaction",
+      "title": "MeOH Concentration is a Leading Indicator of Purity Violations",
+      "statement": "Extract MeOH concentration begins rising 2-3 optimization steps before purity violations become apparent.",
+      "rationale": "MeOH acts as a displacing agent; its increasing presence indicates weakening separation efficiency before purity metrics reflect it.",
+      "test_plan": {
+        "approach": "Monitor MeOH concentration trajectory in optimization sequences leading to purity violations. Compare to sequences that maintain purity.",
+        "controlled_variables": [],
+        "measured_outputs": ["extract_meoh_wt_pct", "purity_ex_meoh_free", "steps_before_violation"]
+      },
+      "validation_criteria": [
+        "MeOH concentration rise precedes purity violation in >70% of cases",
+        "Predictive threshold identified with <10% false positive rate",
+        "Lead time of 2-3 optimization steps confirmed"
+      ],
+      "status": "pending_validation",
+      "confidence": "very_low",
+      "priority": "medium",
+      "simulation_results": [],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H6",
+      "category": "fidelity_and_discretization",
+      "title": "Low-Fidelity Reliability Degrades Near Constraint Boundaries",
+      "statement": "Low-fidelity screening becomes unreliable when candidates are close to constraint boundaries due to discretization errors.",
+      "rationale": "Coarse discretization may not capture the fine-scale transport phenomena that determine constraint satisfaction.",
+      "test_plan": {
+        "approach": "Compare low vs high fidelity results for candidates with normalized constraint margin < 0.1. Measure prediction accuracy as function of constraint proximity.",
+        "controlled_variables": ["operating_point"],
+        "measured_outputs": ["lo_fi_purity", "hi_fi_purity", "prediction_error", "constraint_margin"]
+      },
+      "validation_criteria": [
+        "Prediction accuracy drops significantly for candidates with constraint margin < 0.1",
+        "Clear threshold identified where low-fidelity becomes unreliable",
+        "High-fidelity required within specific violation range"
+      ],
+      "status": "active_testing",
+      "confidence": "low",
+      "priority": "high",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Some evidence of low-fidelity failures near constraint boundaries but not yet systematically studied."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H7",
+      "category": "fidelity_and_discretization",
+      "title": "Optimal Discretization Varies with Flow Regime",
+      "statement": "Different flow regimes (low vs high F1, different Ffeed/Fdes ratios) require different discretization levels for accurate simulation.",
+      "rationale": "High flow rates may require finer discretization to capture sharp concentration fronts, while low flows may be adequately modeled with coarse grids.",
+      "test_plan": {
+        "approach": "Test nfex in [4, 6, 10] across low/medium/high flow regimes. Identify where coarse grids fail to capture key phenomena.",
+        "controlled_variables": ["operating_point"],
+        "measured_outputs": ["purity_ex_meoh_free", "recovery_ga", "solver_convergence", "nfex"]
+      },
+      "validation_criteria": [
+        "Statistically significant differences in results between discretization levels for specific flow regimes",
+        "Clear pattern linking flow characteristics to required discretization",
+        "Regime-specific rules improve prediction accuracy"
+      ],
+      "status": "pending_validation",
+      "confidence": "very_low",
+      "priority": "low",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Observational evidence of discretization sensitivity in high-flow cases."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H8",
+      "category": "layout_topology",
+      "title": "Zone 1 Fragmentation Improves Purity but Reduces Productivity",
+      "statement": "Splitting Zone 1 across multiple columns improves separation efficiency but reduces throughput due to flow distribution losses.",
+      "rationale": "Multiple Zone 1 columns provide better flow distribution and reduced channeling, but introduce additional pressure drops and dead volumes.",
+      "test_plan": {
+        "approach": "Compare layouts with single vs multiple Zone 1 columns at equivalent total Zone 1 volume. Example: nc=(1,2,3,2) vs nc=(2,2,2,2).",
+        "controlled_variables": ["total_zone1_volume", "Ffeed", "Fdes", "Fex"],
+        "measured_outputs": ["purity_ex_meoh_free", "productivity", "recovery_ga", "recovery_ma"]
+      },
+      "validation_criteria": [
+        "Multiple Zone 1 layouts show statistically higher purity",
+        "Productivity reduction quantified and correlated with layout",
+        "Tradeoff curve established for design optimization"
+      ],
+      "status": "pending_validation",
+      "confidence": "low",
+      "priority": "medium",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": ["1,2,3,2", "2,2,2,2"],
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Pattern suggested by (1,2,3,2) vs (2,2,2,2) comparison but not conclusive due to confounding flow differences."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H9",
+      "category": "layout_topology",
+      "title": "Zone 4 Size has Non-Monotonic Impact on Recovery",
+      "statement": "Recovery initially improves with Zone 4 size but then decreases due to remixing effects in oversized zones.",
+      "rationale": "Larger Zone 4 provides more desorption capacity, but excessive size may allow remixing of separated components.",
+      "test_plan": {
+        "approach": "Systematically vary Zone 4 column count while keeping other zones and total columns constant.",
+        "controlled_variables": ["zone1_cols", "zone2_cols", "zone3_cols", "Ffeed", "Fdes"],
+        "measured_outputs": ["recovery_ga", "recovery_ma", "concentration_profiles_zone4"]
+      },
+      "validation_criteria": [
+        "Recovery curve shows maximum at intermediate Zone 4 sizes",
+        "Remixing evidenced by concentration profile analysis",
+        "Optimal size correlates with desorption kinetics"
+      ],
+      "status": "pending_validation",
+      "confidence": "very_low",
+      "priority": "low",
+      "simulation_results": [],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H10",
+      "category": "solver_algorithm",
+      "title": "IPOPT Performance Correlates with Constraint Violation Magnitude",
+      "statement": "Solver convergence time and success rate are inversely related to the magnitude of initial constraint violations.",
+      "rationale": "Large violations create complex optimization landscapes that are harder for gradient-based solvers to navigate.",
+      "test_plan": {
+        "approach": "Measure solver iterations, wall-time, and termination status across candidates with varying initial constraint violations.",
+        "controlled_variables": ["solver_options"],
+        "measured_outputs": ["ipopt_iterations", "solve_wall_time", "termination_status", "initial_constraint_violation"]
+      },
+      "validation_criteria": [
+        "Strong inverse correlation between violation magnitude and solver performance",
+        "Clear violation threshold identified where solver performance degrades",
+        "Pre-screening rules improve overall optimization efficiency"
+      ],
+      "status": "pending_validation",
+      "confidence": "low",
+      "priority": "medium",
+      "simulation_results": [
+        {
+          "run_name": null,
+          "date": null,
+          "flows": null,
+          "nc": null,
+          "metrics": null,
+          "verdict": "inconclusive",
+          "notes": "Observational evidence of solver difficulties with high initial violations but no controlled study."
+        }
+      ],
+      "refined_from": null,
+      "conclusion": null
+    },
+
+    {
+      "id": "H11",
+      "category": "solver_algorithm",
+      "title": "Warm-Start Benefits Diminish with Layout Changes",
+      "statement": "Using optimized flows from one layout as starting point for a different layout provides minimal benefit due to different flow requirements.",
+      "rationale": "Different layouts have fundamentally different flow distributions and zone requirements, making cross-layout warm-starts poor initializations.",
+      "test_plan": {
+        "approach": "Compare optimization performance with and without warm-start when switching NC layouts. Measure convergence time and final solution quality.",
+        "controlled_variables": ["solver_options", "target_layout"],
+        "measured_outputs": ["convergence_iterations", "solve_time", "final_purity", "final_recovery", "warm_start_layout"]
+      },
+      "validation_criteria": [
+        "Warm-start provides minimal benefit (<5% quality improvement) when layout changes",
+        "Benefit correlates with layout similarity metrics",
+        "No warm-start preferred for layout exploration phase"
+      ],
+      "status": "pending_validation",
+      "confidence": "very_low",
+      "priority": "low",
+      "simulation_results": [],
+      "refined_from": null,
+      "conclusion": null
+    }
+
+  ],
+
+  "meta": {
+    "last_updated": "2026-03-17",
+    "total": 11,
+    "by_status": {
+      "active_testing": ["H1", "H4", "H6"],
+      "pending_validation": ["H2", "H3", "H5", "H7", "H8", "H9", "H10", "H11"],
+      "confirmed": [],
+      "rejected": [],
+      "retired": []
+    },
+    "by_priority": {
+      "high": ["H1", "H4", "H6"],
+      "medium": ["H2", "H3", "H5", "H8", "H10"],
+      "low": ["H7", "H9", "H11"]
+    },
+    "agent_instructions": "Before running a new experiment, check active_testing hypotheses for alignment. After each simulation run, add an entry to simulation_results for every relevant hypothesis with: run_name, date (ISO 8601), flows dict, nc array, metrics dict (purity_ex_meoh_free, recovery_ga, recovery_ma, productivity, solver_status), verdict (supports/refutes/inconclusive/partial_support), and notes. When confidence rises to 'high' or 'very_high', update status to 'confirmed' or 'rejected' and fill in conclusion."
+  }
+}

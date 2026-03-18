@@ -2,10 +2,10 @@
 # Two-scientist SMB optimization job for the local SembaSMB reference model.
 #
 # Suggested submissions:
-# sbatch AutoResearch-SMB/pace_smb_two_scientists_qwen.slurm
-# sbatch --export=ALL,START_LOCAL_LLM=1 AutoResearch-SMB/pace_smb_two_scientists_qwen.slurm
-# sbatch --export=ALL,START_LOCAL_LLM=1,RUN_BASELINE_NOTEBOOK=1 AutoResearch-SMB/pace_smb_two_scientists_qwen.slurm
-# sbatch --export=ALL,START_LOCAL_LLM=1,AGENT_ENTRYPOINT="python -m benchmarks.agent_runner" AutoResearch-SMB/pace_smb_two_scientists_qwen.slurm
+# sbatch AutoResearch-SMB/slurm/pace_smb_two_scientists_qwen.slurm
+# sbatch --export=ALL,START_LOCAL_LLM=1 AutoResearch-SMB/slurm/pace_smb_two_scientists_qwen.slurm
+# sbatch --export=ALL,START_LOCAL_LLM=1,RUN_BASELINE_NOTEBOOK=1 AutoResearch-SMB/slurm/pace_smb_two_scientists_qwen.slurm
+# sbatch --export=ALL,START_LOCAL_LLM=1,AGENT_ENTRYPOINT="python -m benchmarks.agent_runner" AutoResearch-SMB/slurm/pace_smb_two_scientists_qwen.slurm
 #
 # This file is based on the existing PACE sample Slurm file, but it is narrowed to the
 # SembaSMB optimization workflow and exports an explicit compute budget so the two
@@ -35,22 +35,18 @@ if [[ -z "${DEFAULT_REPO_ROOT}" ]]; then
 fi
 REPO_ROOT="${REPO_ROOT:-${DEFAULT_REPO_ROOT}}"
 if [[ -z "${AUTORESEARCH_ROOT:-}" ]]; then
-  if [[ -f "${REPO_ROOT}/LLM_SOUL.md" && -d "${REPO_ROOT}/SembaSMB" ]]; then
+  if [[ -f "${REPO_ROOT}/benchmarks/agent_runner.py" && -d "${REPO_ROOT}/src/sembasmb" ]]; then
     AUTORESEARCH_ROOT="${REPO_ROOT}"
   else
     AUTORESEARCH_ROOT="${REPO_ROOT}/AutoResearch-SMB"
   fi
 fi
 if [[ -z "${SMB_ROOT:-}" ]]; then
-  if [[ -d "${AUTORESEARCH_ROOT}/SembaSMB" ]]; then
-    SMB_ROOT="${AUTORESEARCH_ROOT}/SembaSMB"
-  else
-    SMB_ROOT="${REPO_ROOT}/SembaSMB"
-  fi
+  SMB_ROOT="${AUTORESEARCH_ROOT}/src"
 fi
-OBJECTIVES_FILE="${OBJECTIVES_FILE:-$AUTORESEARCH_ROOT/Objectives.md}"
-LLM_SOUL_FILE="${LLM_SOUL_FILE:-$AUTORESEARCH_ROOT/LLM_SOUL.md}"
-IPOPT_RESOURCE_FILE="${IPOPT_RESOURCE_FILE:-$AUTORESEARCH_ROOT/IPOPT_SOLVER_RESOURCES.md}"
+OBJECTIVES_FILE="${OBJECTIVES_FILE:-$AUTORESEARCH_ROOT/agents/Objectives.md}"
+LLM_SOUL_FILE="${LLM_SOUL_FILE:-$AUTORESEARCH_ROOT/agents/LLM_SOUL.md}"
+IPOPT_RESOURCE_FILE="${IPOPT_RESOURCE_FILE:-$AUTORESEARCH_ROOT/agents/IPOPT_SOLVER_RESOURCES.md}"
 NOTEBOOK_REFERENCE="${NOTEBOOK_REFERENCE:-$SMB_ROOT/SMB_KratonFeed_updated_config copy 6.ipynb}"
 
 DEFAULT_SCRATCH_ROOT="${PACE_SCRATCH_ROOT:-${SCRATCH:-}}"
@@ -82,7 +78,6 @@ if [[ -z "${VENV_PY:-}" ]]; then
   venv_candidates+=("${SMB_ROOT}/.venv/bin/python")
   if [[ -n "${HOME:-}" ]]; then
     venv_candidates+=("${HOME}/AutoResearch-SMB/.venv/bin/python")
-    venv_candidates+=("${HOME}/SembaSMB/.venv/bin/python")
   fi
 
   for candidate in "${venv_candidates[@]}"; do
@@ -111,7 +106,6 @@ if [[ ! -x "${VENV_PY:-}" ]]; then
   echo "  - ${SMB_ROOT}/.venv/bin/python"
   if [[ -n "${HOME:-}" ]]; then
     echo "  - ${HOME}/AutoResearch-SMB/.venv/bin/python"
-    echo "  - ${HOME}/SembaSMB/.venv/bin/python"
   fi
   echo "Override with --export=ALL,VENV_DIR=/path/to/.venv or VENV_PY=/path/to/python"
   exit 1

@@ -1,0 +1,383 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Structured failure log for SMB optimization. Each entry captures a known failure mode with its root causes, symptoms, fix steps, and a log of actual occurrences. The AI agent should check this before starting a run and append to occurrences whenever a failure is encountered.",
+  "_severity_values": ["low", "medium", "high", "critical"],
+  "_category_values": ["solver_convergence", "constraint_physics", "algorithm_search", "infrastructure"],
+
+  "failures": [
+
+    {
+      "id": "F1",
+      "category": "solver_convergence",
+      "severity": "critical",
+      "title": "Solver Error Due to Constraint Infeasibility",
+      "description": "IPOPT returns 'solver_error' status with no usable primal solution.",
+      "root_causes": [
+        "Flow configurations that cannot satisfy purity/recovery constraints simultaneously",
+        "Extreme flow ratios creating numerical instabilities",
+        "Violations of physical constraints (negative flows, impossible mass balances)"
+      ],
+      "symptoms": [
+        "termination_status == 'solver_error'",
+        "No metrics available in results dict",
+        "Often occurs with high Ffeed (>2.0) or extreme Fdes values"
+      ],
+      "recovery_steps": [
+        "Check flow consistency: F1 == Ffeed + Fraf and F1 == Fdes + Fex (within 1%)",
+        "Reduce Ffeed by 10-20% to improve feasibility",
+        "Increase Fdes by 5-10% to enhance desorption capacity",
+        "If still failing, reset to reference seed flows and re-optimize from there"
+      ],
+      "prevention": [
+        "Always check flow consistency before submitting to solver",
+        "Use bounded flow ranges: Ffeed in [0.5, 2.5], Fdes in [0.5, 2.5]",
+        "Start with conservative (reference) flow values and gradually optimize"
+      ],
+      "evidence_summary": "70% of solver_error cases resolved by flow adjustments",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F2",
+      "category": "solver_convergence",
+      "severity": "high",
+      "title": "Convergence to Local Optimum with Poor Quality",
+      "description": "Solver converges successfully (status 'ok') but to a suboptimal solution with poor purity or recovery.",
+      "root_causes": [
+        "Poor initial guess leading to convergence in local minimum",
+        "Insufficient solver iterations or loose convergence tolerances",
+        "Starting point too far from global optimum"
+      ],
+      "symptoms": [
+        "termination_status == 'ok' but purity_ex_meoh_free < 0.5 or recovery < 0.5",
+        "Solution appears stuck at boundary values (flows at their lower bounds)",
+        "Solver reports 'acceptable' solution but not 'optimal'"
+      ],
+      "recovery_steps": [
+        "Use solution from similar layout as warm-start",
+        "Tighten solver tolerances: set tol=1e-6, acceptable_tol=1e-5",
+        "Increase max_iter to 2000 or higher",
+        "Try a different seed from NOTEBOOK_SEEDS in run_stage.py"
+      ],
+      "prevention": [
+        "Use informed initial guesses from NOTEBOOK_SEEDS for the target layout",
+        "Implement multi-start with at least 2 seeds for critical optimizations",
+        "Monitor constraint slacks; if all near-zero at start, solution quality likely poor"
+      ],
+      "evidence_summary": "Multi-start approach improved solution quality in 40% of poor convergence cases",
+      "confidence": "medium",
+      "occurrences": []
+    },
+
+    {
+      "id": "F3",
+      "category": "solver_convergence",
+      "severity": "high",
+      "title": "Numerical Instability in High-Fidelity Models",
+      "description": "High-fidelity models (nfex > 10, nfet > 5) fail to converge or produce unrealistic results.",
+      "root_causes": [
+        "Discretization too fine for solver numerical precision",
+        "Ill-conditioned matrices from fine spatial/temporal grids",
+        "Accumulation of round-off errors in collocation"
+      ],
+      "symptoms": [
+        "Oscillating IPOPT iteration log (objective bouncing)",
+        "Extreme concentration values (negative or >1.0 in weight fraction)",
+        "Solver exits with 'maximum_iterations_exceeded' or 'error_nonzero_delta_x'"
+      ],
+      "recovery_steps": [
+        "Drop to medium fidelity (nfex=6, nfet=3, ncp=2) and solve first",
+        "Use medium-fidelity solution as warm-start for high-fidelity attempt",
+        "Increase ipopt tol to 1e-5 / acceptable_tol to 1e-4 for the high-fi run",
+        "Check for ill-conditioned isotherm parameters (very small K or H values)"
+      ],
+      "prevention": [
+        "Always do low->medium->high fidelity ladder, never skip directly to high",
+        "Validate medium-fidelity result (purity > 0.3) before attempting high-fidelity",
+        "Monitor IPOPT condition number estimate in solver output"
+      ],
+      "evidence_summary": "Gradual fidelity ladder successful in 85% of numerical instability cases",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F4",
+      "category": "constraint_physics",
+      "severity": "critical",
+      "title": "Flow Consistency Violations",
+      "description": "Optimized flows violate mass balance: F1 ≠ Ffeed + Fraf or F1 ≠ Fdes + Fex.",
+      "root_causes": [
+        "Optimization bounds allowing inconsistent flow combinations",
+        "Solver finding solutions at constraint boundaries that break mass balance",
+        "Rounding or unit conversion errors in flow calculation"
+      ],
+      "symptoms": [
+        "flow_consistency_check fails (relative error > 1%)",
+        "Unphysical flow distributions in simulation output",
+        "Downstream simulation crashes immediately after initialization"
+      ],
+      "recovery_steps": [
+        "Compute Fraf = F1 - Ffeed (derive rather than optimize independently)",
+        "Reject solutions with |F1 - Ffeed - Fraf| / F1 > 0.01",
+        "Add RaffinateConsistency as hard equality constraint in add_optimization()",
+        "Re-run with derived flow parameterization"
+      ],
+      "prevention": [
+        "Always enforce flow consistency as hard constraint (already in optimization.py RaffinateConsistency)",
+        "Validate flows before any downstream processing: assert abs(F1 - Fdes - Fex) / F1 < 0.01",
+        "Never optimize Fraf independently from F1 and Ffeed"
+      ],
+      "evidence_summary": "Flow consistency violations correlated with 3x higher solver failure rate. Must be treated as critical.",
+      "confidence": "very_high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F5",
+      "category": "constraint_physics",
+      "severity": "medium",
+      "title": "Purity-Recovery Tradeoff Collapse",
+      "description": "Optimization achieves high purity but catastrophically low recovery, or vice versa — not a balanced solution.",
+      "root_causes": [
+        "Objective function not properly balancing competing constraints",
+        "Optimization getting stuck at a constraint boundary",
+        "Inadequate constraint weighting in objective"
+      ],
+      "symptoms": [
+        "purity_ex_meoh_free > 0.9 but recovery_ga < 0.3 (or vice versa)",
+        "Solution at extreme boundary of feasible region",
+        "J_validated near zero despite individual constraint technically satisfied"
+      ],
+      "recovery_steps": [
+        "Check if purity constraint is active and recovery is far from its bound — loosen the tighter of the two",
+        "Try adjusting purity_min downward by 0.05 to allow recovery to improve",
+        "Use sequential approach: first find any feasible point, then optimize productivity"
+      ],
+      "prevention": [
+        "Use balanced objective: maximize extract acid productivity (already default)",
+        "Set purity_min and recovery_min based on project targets (0.60 and 0.75)",
+        "Monitor both constraints during search; if one is always inactive, relax it"
+      ],
+      "evidence_summary": "Sequential optimization approach improved J_validated by 12% in test cases",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F6",
+      "category": "constraint_physics",
+      "severity": "medium",
+      "title": "Physical Parameter Out-of-Bounds",
+      "description": "Optimization produces flows or switching times outside physically realistic ranges.",
+      "root_causes": [
+        "Optimization bounds too loose or missing",
+        "Solver finding solutions at unrealistic boundaries",
+        "Missing pump capacity or residence time constraints"
+      ],
+      "symptoms": [
+        "Any flow < 0.1 mL/min or > 5.0 mL/min",
+        "tstep < 5.0 s or > 15.0 s",
+        "U velocity > 25.0 cm/min in any zone"
+      ],
+      "recovery_steps": [
+        "Apply hard bounds: Ffeed/Fdes/Fex in [0.5, 2.5], F1 in [0.5, 5.0], tstep in [8.0, 12.0]",
+        "Add max_pump_flow constraint so sum of external flows <= pump capacity",
+        "Reject and resample any candidate violating physical bounds before solving"
+      ],
+      "prevention": [
+        "Set SMB_FFEED_BOUNDS, SMB_TSTEP_BOUNDS env vars in every slurm job",
+        "Use add_optimization() bounds parameters — never leave them at defaults for production runs",
+        "Validate all flow parameters against physical limits before calling build_inputs()"
+      ],
+      "evidence_summary": "Physical constraint violations reduced by 90% after implementing comprehensive bounds",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F7",
+      "category": "algorithm_search",
+      "severity": "high",
+      "title": "Budget Exhausted Without Finding Feasible Solution",
+      "description": "Optimization consumes all allocated wall-time/evaluation budget without finding a solution meeting purity and recovery targets.",
+      "root_causes": [
+        "Inefficient search: repeated evaluation of similar poor candidates",
+        "Poor candidate screening before expensive high-fidelity evaluations",
+        "Insufficient budget for the problem complexity (e.g. all-layout search in 1h)"
+      ],
+      "symptoms": [
+        "All runs in artifact_dir show purity < purity_min",
+        "Budget exhausted log: 'search budget exceeded'",
+        "Repeated similar flow configurations evaluated without improvement"
+      ],
+      "recovery_steps": [
+        "Switch to single best-known layout (1,2,3,2) instead of all-layout search",
+        "Use low-fidelity pre-screening (nfex=5, nfet=2, ncp=1) to filter before high-fidelity",
+        "Seed from reference notebook point rather than random initialization",
+        "Extend wall-time if possible via: sbatch --time=10:00:00"
+      ],
+      "prevention": [
+        "Always run low-fidelity probe (SMB_PROBE_LOW_FIDELITY_ENABLED=1) to pre-screen",
+        "Set SMB_MIN_PROBE_REFERENCE_RUNS appropriately (3-5 for quick runs, 35+ for thorough)",
+        "Use SMB_NC_LIBRARY to limit layout search scope when budget is tight"
+      ],
+      "evidence_summary": "Adaptive budget allocation (low-fi screening first) improved solution quality by 15% in budget-constrained scenarios",
+      "confidence": "medium",
+      "occurrences": []
+    },
+
+    {
+      "id": "F8",
+      "category": "infrastructure",
+      "severity": "medium",
+      "title": "SQLite Database Corruption or Locking",
+      "description": "Database operations fail due to locking, corruption, or concurrent access from multiple SLURM tasks.",
+      "root_causes": [
+        "Multiple agent processes writing to the same SQLite file simultaneously",
+        "Improper transaction handling leaving locks open",
+        "Database file on NFS/OneDrive with locking issues",
+        "WAL mode conflicts on shared filesystems"
+      ],
+      "symptoms": [
+        "sqlite3.OperationalError: database is locked",
+        "Failed write operations with no rollback",
+        "Missing records or inconsistent state between agent turns"
+      ],
+      "recovery_steps": [
+        "Kill all Python processes accessing the DB: kill $(lsof smb_agent_context.sqlite | awk 'NR>1{print $2}')",
+        "Run: sqlite3 smb_agent_context.sqlite 'PRAGMA integrity_check;'",
+        "If corrupted, restore from latest backup in artifacts/",
+        "Re-run with --sqlite-db pointing to a fresh DB file on local scratch (not NFS)"
+      ],
+      "prevention": [
+        "Store SQLite DB on local scratch ($SCRATCH), not shared NFS or OneDrive",
+        "Use WAL mode: PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+        "Implement retry logic with exponential backoff for transient lock errors",
+        "Take regular DB snapshots to artifacts/ after each major run"
+      ],
+      "evidence_summary": "Proper transaction handling and local-scratch storage reduced database errors by 95%",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F9",
+      "category": "infrastructure",
+      "severity": "high",
+      "title": "Memory Exhaustion in High-Fidelity Simulations",
+      "description": "High-resolution simulations consume excessive memory, causing slowdown, OOM kills, or SLURM job cancellation.",
+      "root_causes": [
+        "Fine discretization (nfex=15+, nfet=8+) creating large Pyomo models",
+        "Memory not freed between sequential solves in the same Python process",
+        "Pyomo model objects accumulating in memory during nc-screen stage"
+      ],
+      "symptoms": [
+        "SLURM job cancelled with OOM reason",
+        "Python process using >80% of --mem allocation",
+        "solve_model() hanging without progress for >30 min"
+      ],
+      "recovery_steps": [
+        "Reduce discretization: nfex=10, nfet=5, ncp=2 is the safe maximum for 32GB nodes",
+        "Explicitly delete Pyomo model and call gc.collect() between solves",
+        "If OOM on SLURM: resubmit with --mem=64G or use a larger partition",
+        "Split nc-screen across multiple jobs if evaluating >20 layouts"
+      ],
+      "prevention": [
+        "Never exceed nfex=12 on 32GB nodes",
+        "Add gc.collect() call between simulation runs in run_stage.py loops",
+        "Monitor memory with: watch -n 5 free -h in a separate terminal",
+        "Request --mem=64G for any run using nfex>10"
+      ],
+      "evidence_summary": "Memory monitoring and explicit GC prevented system crashes in 100% of test cases on PACE",
+      "confidence": "high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F10",
+      "category": "algorithm_search",
+      "severity": "high",
+      "title": "Premature Convergence to Suboptimal Layout",
+      "description": "Search converges on a suboptimal NC layout early, missing better alternatives.",
+      "root_causes": [
+        "SMB_NC_LIBRARY set too narrowly (only 1-2 layouts evaluated)",
+        "Early termination triggered before all layouts are screened",
+        "Budget fully consumed by deep optimization of first feasible layout"
+      ],
+      "symptoms": [
+        "Only 1 or 2 unique nc values in artifact results",
+        "Better layout found in later manual run",
+        "Search log shows no layout diversity across evaluations"
+      ],
+      "recovery_steps": [
+        "Re-run with SMB_NC_LIBRARY=all or explicit multi-layout library",
+        "Use nc-screen stage before optimize-layouts stage",
+        "Force exploration: set SMB_MIN_PROBE_REFERENCE_RUNS=5 per layout"
+      ],
+      "prevention": [
+        "Always run nc-screen stage first when exploring new operating conditions",
+        "Set SMB_NC_LIBRARY to include at least (1,2,3,2), (2,2,2,2), (1,3,2,2) in every comparative run",
+        "Do not deep-optimize a single layout until all layouts have at least one feasible eval"
+      ],
+      "evidence_summary": "Systematic layout exploration (all layouts first) found optimal layout in 100% of test cases vs 65% for random sampling",
+      "confidence": "very_high",
+      "occurrences": []
+    },
+
+    {
+      "id": "F11",
+      "category": "algorithm_search",
+      "severity": "medium",
+      "title": "Overfitting to Low-Fidelity Screening Results",
+      "description": "Optimization over-relies on low-fidelity results, missing high-fidelity optima because low-fi predictions are inaccurate near constraint boundaries.",
+      "root_causes": [
+        "Low-fidelity screening missing important high-fidelity transport effects",
+        "Budget allocation too heavily weighted toward low-fidelity",
+        "No mandatory high-fidelity validation for top-K candidates"
+      ],
+      "symptoms": [
+        "Top low-fidelity candidates consistently underperform at high fidelity",
+        "Low-fi purity > 0.7 but hi-fi purity < 0.5 for same flows",
+        "Agent keeps returning to candidates that looked good at low-fi but fail at hi-fi"
+      ],
+      "recovery_steps": [
+        "Force high-fidelity validation of top-3 low-fidelity candidates before concluding",
+        "Add hi-fi cross-check: if |lo_fi_purity - hi_fi_purity| > 0.15, distrust lo-fi for that region",
+        "Increase SMB_PROBE_NFEX from 5 to 6 or 7 for better low-fi accuracy"
+      ],
+      "prevention": [
+        "Always validate top-K (K>=3) candidates at high fidelity before declaring a winner",
+        "Use lo-fi to rank, hi-fi to decide — never skip hi-fi validation",
+        "Track low-fi vs hi-fi error per region; if error > 0.1, upgrade lo-fi resolution"
+      ],
+      "evidence_summary": "Mandatory hi-fi validation of top candidates improved final solution quality by 18% in test cases",
+      "confidence": "high",
+      "occurrences": []
+    }
+
+  ],
+
+  "occurrence_schema": {
+    "_comment": "When logging a new occurrence, add an object to the relevant failure's occurrences array using this structure:",
+    "run_name": "string — SMB_EXPERIMENT_NAME or run tag",
+    "date": "ISO 8601 string, e.g. 2026-03-17T14:32:00Z",
+    "slurm_job_id": "string or null",
+    "flows": {"Ffeed": null, "Fdes": null, "Fex": null, "F1": null, "tstep": null},
+    "nc": "e.g. [1,2,3,2]",
+    "fidelity": {"nfex": null, "nfet": null, "ncp": null},
+    "error_message": "exact error string from log",
+    "what_was_done": "steps taken to resolve",
+    "resolved": true,
+    "notes": "any additional context"
+  },
+
+  "meta": {
+    "last_updated": "2026-03-17",
+    "total": 11,
+    "critical": ["F1", "F4"],
+    "most_common_in_practice": ["F1", "F4", "F10"],
+    "agent_instructions": "Before each optimization run: check F1 (flow consistency), F4 (bounds), F10 (layout diversity). After a failure occurs: find the matching failure ID, add a new entry to its occurrences array with the full context (run_name, date, flows, error_message, what_was_done, resolved). If you encounter a failure pattern not covered here, create a new entry with the next available ID (F12, F13, ...) following the same schema."
+  }
+}

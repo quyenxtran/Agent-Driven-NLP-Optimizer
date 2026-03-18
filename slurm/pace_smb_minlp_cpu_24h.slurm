@@ -2,10 +2,10 @@
 # CPU-only MINLP run (24h), intended for comparison against agent-driven runs.
 #
 # Submit:
-#   sbatch AutoResearch-SMB/pace_smb_minlp_cpu_24h.slurm
+#   sbatch AutoResearch-SMB/slurm/pace_smb_minlp_cpu_24h.slurm
 #
 # Optional shared tag:
-#   sbatch --export=ALL,SMB_SUITE_TAG=cmp01 AutoResearch-SMB/pace_smb_minlp_cpu_24h.slurm
+#   sbatch --export=ALL,SMB_SUITE_TAG=cmp01 AutoResearch-SMB/slurm/pace_smb_minlp_cpu_24h.slurm
 
 #SBATCH --job-name=smb-minlp-24h
 #SBATCH -A gts-sn73
