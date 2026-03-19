@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -26,6 +27,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-dir", default=str(REPO_ROOT / "artifacts" / "agent_runs"))
     parser.add_argument("--conversation-log", default=os.environ.get("SMB_CONVERSATION_LOG", ""))
     parser.add_argument("--conversation-stream-log", default=os.environ.get("SMB_CONVERSATION_STREAM_LOG", ""))
+    parser.add_argument(
+        "--conversation-log-mode",
+        default=os.environ.get("SMB_CONVERSATION_LOG_MODE", "compact"),
+        choices=["compact", "full"],
+    )
+    parser.add_argument(
+        "--conversation-response-max-chars",
+        type=int,
+        default=int(os.environ.get("SMB_CONVERSATION_RESPONSE_MAX_CHARS", "1200")),
+    )
     parser.add_argument("--sqlite-db", default=os.environ.get("SMB_SQLITE_DB", str(REPO_ROOT / "artifacts" / "agent_runs" / "smb_agent_context.sqlite")))
     parser.add_argument("--research-md", default=os.environ.get("SMB_RESEARCH_MD", str(REPO_ROOT / "research.md")))
     parser.add_argument("--research-tail-chars", type=int, default=int(os.environ.get("SMB_RESEARCH_TAIL_CHARS", "1200")))
@@ -140,6 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=int(os.environ.get("SMB_FINALIZATION_LOW_FIDELITY_NCP", os.environ.get("SMB_PROBE_NCP", "1"))),
     )
     parser.add_argument("--llm-timeout-seconds", type=float, default=float(os.environ.get("SMB_LLM_TIMEOUT_SECONDS", "300")))
+    parser.add_argument(
+        "--llm-max-tokens",
+        type=int,
+        default=int(os.environ.get("SMB_LLM_MAX_TOKENS", "320")),
+    )
     parser.add_argument("--llm-max-retries", type=int, default=int(os.environ.get("SMB_LLM_MAX_RETRIES", "1")))
     parser.add_argument(
         "--llm-retry-backoff-seconds",
@@ -1080,8 +1096,11 @@ class OpenAICompatClient:
         fallback_api_key: str = "",
         conversation_stream_path: Optional[Path] = None,
         timeout_seconds: float = 300.0,
+        max_tokens: int = 320,
         max_retries: int = 2,
         retry_backoff_seconds: float = 2.0,
+        conversation_log_mode: str = "compact",
+        conversation_response_max_chars: int = 1200,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -1101,8 +1120,48 @@ class OpenAICompatClient:
         self.conversations: List[Dict[str, object]] = []
         self.conversation_stream_path = conversation_stream_path
         self.timeout_seconds = max(5.0, float(timeout_seconds))
+        self.max_tokens = max(32, int(max_tokens))
         self.max_retries = max(1, int(max_retries))
         self.retry_backoff_seconds = max(0.0, float(retry_backoff_seconds))
+        self.conversation_log_mode = str(conversation_log_mode or "compact").strip().lower()
+        if self.conversation_log_mode not in {"compact", "full"}:
+            self.conversation_log_mode = "compact"
+        self.conversation_response_max_chars = max(120, int(conversation_response_max_chars))
+
+    @staticmethod
+    def _sha256(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+
+    def _record_for_storage(self, record: Dict[str, object]) -> Dict[str, object]:
+        if self.conversation_log_mode == "full":
+            return record
+        messages = record.get("messages") if isinstance(record.get("messages"), list) else []
+        system_text = ""
+        user_text = ""
+        if len(messages) >= 1 and isinstance(messages[0], dict):
+            system_text = str(messages[0].get("content", ""))
+        if len(messages) >= 2 and isinstance(messages[1], dict):
+            user_text = str(messages[1].get("content", ""))
+        assistant_text = str(record.get("assistant_response", "")) if "assistant_response" in record else ""
+        compact: Dict[str, object] = {
+            "call_id": record.get("call_id"),
+            "timestamp_utc": record.get("timestamp_utc"),
+            "role": record.get("role"),
+            "metadata": record.get("metadata", {}),
+            "attempts": record.get("attempts", []),
+            "final_backend": record.get("final_backend"),
+            "prompt_stats": {
+                "system_chars": len(system_text),
+                "user_chars": len(user_text),
+                "system_sha256": self._sha256(system_text),
+                "user_sha256": self._sha256(user_text),
+                "user_preview": user_text[:220],
+            },
+        }
+        if assistant_text:
+            compact["assistant_response_preview"] = assistant_text[: self.conversation_response_max_chars]
+            compact["assistant_response_chars"] = len(assistant_text)
+        return compact
 
     def _append_conversation_stream(self, record: Dict[str, object]) -> None:
         if self.conversation_stream_path is None:
@@ -1131,7 +1190,7 @@ class OpenAICompatClient:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
-        def build_payload(include_stop: bool, include_temperature: bool) -> Dict[str, object]:
+        def build_payload(include_stop: bool, include_temperature: bool, include_max_tokens: bool) -> Dict[str, object]:
             payload: Dict[str, object] = {
                 "model": model,
                 "messages": [
@@ -1143,14 +1202,18 @@ class OpenAICompatClient:
                 payload["temperature"] = temperature
             if include_stop:
                 payload["stop"] = list(stop_sequences)
+            if include_max_tokens:
+                payload["max_tokens"] = self.max_tokens
             return payload
 
-        # Some providers/models reject stop sequences and/or custom temperature controls.
+        # Some providers/models reject stop sequences, custom temperature controls,
+        # or max_tokens naming. Try progressively simpler payloads.
         payload_variants = [
-            ("full", build_payload(True, True)),
-            ("no_stop", build_payload(False, True)),
-            ("no_temp", build_payload(True, False)),
-            ("no_stop_no_temp", build_payload(False, False)),
+            ("full", build_payload(True, True, True)),
+            ("no_stop", build_payload(False, True, True)),
+            ("no_temp", build_payload(True, False, True)),
+            ("no_stop_no_temp", build_payload(False, False, True)),
+            ("no_stop_no_temp_no_max", build_payload(False, False, False)),
         ]
         last_error = "unknown_error"
 
@@ -1197,6 +1260,14 @@ class OpenAICompatClient:
                         and "temperature" in payload
                         and "temperature" in response_body.lower()
                         and ("unsupported" in response_body.lower() or "default" in response_body.lower())
+                    ):
+                        break
+                    # If provider rejects max_tokens naming, retry a variant without it.
+                    if (
+                        exc.code == 400
+                        and "max_tokens" in payload
+                        and "max_tokens" in response_body.lower()
+                        and ("unsupported" in response_body.lower() or "not supported" in response_body.lower())
                     ):
                         break
                     return None, last_error
@@ -1268,8 +1339,9 @@ class OpenAICompatClient:
                 self.last_backend = "primary"
                 record["final_backend"] = self.last_backend
                 record["assistant_response"] = content
-                self.conversations.append(record)
-                self._append_conversation_stream(record)
+                stored_record = self._record_for_storage(record)
+                self.conversations.append(stored_record)
+                self._append_conversation_stream(stored_record)
                 return content
         if self.fallback_enabled:
             content, err = self._chat_once(
@@ -1294,13 +1366,15 @@ class OpenAICompatClient:
                 self.last_backend = "fallback"
                 record["final_backend"] = self.last_backend
                 record["assistant_response"] = content
-                self.conversations.append(record)
-                self._append_conversation_stream(record)
+                stored_record = self._record_for_storage(record)
+                self.conversations.append(stored_record)
+                self._append_conversation_stream(stored_record)
                 return content
         self.last_backend = "none"
         record["final_backend"] = self.last_backend
-        self.conversations.append(record)
-        self._append_conversation_stream(record)
+        stored_record = self._record_for_storage(record)
+        self.conversations.append(stored_record)
+        self._append_conversation_stream(stored_record)
         return None
 
     @staticmethod
@@ -3792,8 +3866,11 @@ def main() -> int:
         fallback_api_key=args.fallback_llm_api_key,
         conversation_stream_path=conversation_stream_artifact,
         timeout_seconds=args.llm_timeout_seconds,
+        max_tokens=args.llm_max_tokens,
         max_retries=args.llm_max_retries,
         retry_backoff_seconds=args.llm_retry_backoff_seconds,
+        conversation_log_mode=args.conversation_log_mode,
+        conversation_response_max_chars=args.conversation_response_max_chars,
     )
     sqlite_conn = open_sqlite_db(args.sqlite_db)
     optimize_stage_args = configure_stage_args(make_stage_args("optimize-layouts"), args)

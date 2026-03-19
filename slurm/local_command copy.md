@@ -391,12 +391,3 @@ Results:
 {'repeat': 5000, 'status': 200, 'wall_s': 38.04, 'head': '  pong<|endoftext|><|im_start|> <|im_start|> <|im_start|> <|im_start|> '}  
 {'repeat': 8000, 'status': 200, 'wall_s': 38.24, 'head': '  pong<|endoftext|><|im_start|> <|im_start|> <|im_start|> <|im_start|> '}  
 {'repeat': 12000, 'status': 200, 'wall_s': 38.7, 'head': '  pong<|endoftext|><|im_start|> <|im_start|> <|im_start|> <|im_start|> '} 
-{'repeat': 32000, 'status': 200, 'wall_s': 45.25, 'head': '  pong<|endoftext|><|im_start|> <|im_start|> <|im_start|> <|im_start|> '}
-
-
-
-
-## Context benchmark
-python scripts/benchmark_context_growth.py \
-  --input-paths ~/AutoResearch-SMB/artifacts/agent_runs \
-  --output-dir ~/AutoResearch-SMB/artifacts/analysis/context_growth

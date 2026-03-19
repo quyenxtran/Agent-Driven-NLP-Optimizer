@@ -526,7 +526,7 @@ def apply_seed_to_args(
 
 
 def load_config(args: argparse.Namespace, nc: Sequence[int]) -> SMBConfig:
-    from src import SMBConfig  # type: ignore
+    from sembasmb import SMBConfig  # type: ignore
 
     return SMBConfig(
         nc=tuple(nc),
@@ -554,7 +554,7 @@ def load_config(args: argparse.Namespace, nc: Sequence[int]) -> SMBConfig:
 
 
 def build_flow(args: argparse.Namespace) -> FlowRates:
-    from src import FlowRates  # type: ignore
+    from sembasmb import FlowRates  # type: ignore
 
     fraf = args.fraf if args.fraf is not None else derive_fraf(args.ffeed, args.fdes, args.fex)
     return FlowRates(
@@ -584,7 +584,7 @@ def resolve_solver_name(requested: str) -> str:
 
 
 def build_solver_options(args: argparse.Namespace) -> Dict[str, object]:
-    from src import default_ipopt_options  # type: ignore
+    from sembasmb import default_ipopt_options  # type: ignore
 
     options: Dict[str, object] = default_ipopt_options()
     force_mumps_only = os.environ.get("SMB_FORCE_MUMPS_ONLY", "0") == "1"
@@ -616,7 +616,7 @@ def safe_float(value: object) -> float:
 
 
 def collect_profile_payload(m, inputs) -> Dict[str, object]:
-    from src import compute_outlet_averages, compute_purity_recovery  # type: ignore
+    from sembasmb import compute_outlet_averages, compute_purity_recovery  # type: ignore
 
     outlets = compute_outlet_averages(m, inputs)
     metrics = compute_purity_recovery(m, inputs, outlets)
@@ -866,7 +866,7 @@ def _ensure_ipopt_logfile(solver_options: Dict[str, object], args: argparse.Name
 
 
 def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int], *, return_model_state: bool = False) -> Dict[str, object]:
-    from src import (  # type: ignore
+    from sembasmb import (  # type: ignore
         apply_discretization,
         build_inputs,
         build_model,
@@ -1067,7 +1067,7 @@ def evaluate_optimized_layout(
     *,
     warm_start_state: Dict[str, object] | None = None,
 ) -> Dict[str, object]:
-    from src import (  # type: ignore
+    from sembasmb import (  # type: ignore
         add_optimization,
         apply_discretization,
         build_inputs,
@@ -1134,8 +1134,8 @@ def evaluate_optimized_layout(
     phase1_status = None
     try:
         if two_phase:
-            from src import add_feasibility_objective, restore_productivity_objective  # type: ignore
-            from src import feasibility_restoration_options, warm_start_options  # type: ignore
+            from sembasmb import add_feasibility_objective, restore_productivity_objective  # type: ignore
+            from sembasmb import feasibility_restoration_options, warm_start_options  # type: ignore
 
             # Phase 1: minimize constraint violation
             add_feasibility_objective(m, inputs)
