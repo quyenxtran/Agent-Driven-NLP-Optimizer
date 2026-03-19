@@ -3,7 +3,7 @@
 ```bash
 # Local: commit and push
 git add .
-git commit -m "Updated prompt"
+git commit -m "resolve_ipopt_parallel_profile / ipopt_accounting_cpus"
 git push origin main
 
 # On PACE
@@ -12,7 +12,7 @@ git pull
 ```
 
 
-ROOT=/storage/home/hcoda1/4/qtran47/Agent-Driven-NLP-Optimizer
+<!-- ROOT=/storage/home/hcoda1/4/qtran47/Agent-Driven-NLP-Optimizer
 JOBTAG=v2_$(date +%Y%m%d_%H%M%S)
 DB=$ROOT/artifacts/agent_runs/smb_agent_context_${JOBTAG}.sqlite
 LIVE=$ROOT/artifacts/agent_runs/live_results_${JOBTAG}.jsonl
@@ -33,6 +33,7 @@ OLLAMA_NUM_PARALLEL=1,\
 OLLAMA_MAX_LOADED_MODELS=1,\
 SMB_LLM_TIMEOUT_SECONDS=1200,\
 SMB_OLLAMA_PREWARM_ENABLED=1,\
+SMB_LLM_MAX_TOKENS=800,\
 SMB_OLLAMA_PREWARM_MAX_SECONDS=180,\
 SMB_METHOD=agent_v2,\
 SMB_EXECUTIVE_ARBITRATION_ENABLED=1,\
@@ -40,10 +41,51 @@ SMB_EXECUTIVE_MAX_REVISIONS=1,\
 SMB_SYSTEMATIC_INFEASIBILITY_K=5,\
 SMB_RANDOM_SEARCH_MODE=0,\
 SMB_CONVERSATION_LOG_MODE=full,\
+SMB_CONVERSATION_RESPONSE_MAX_CHARS=10000,\
 SMB_LIVE_RESULTS_LOG=${LIVE},\
 AGENT_ENTRYPOINT="${ROOT}/.venv/bin/python -m benchmarks.agent_runner --method agent_v2 --run-name agent_v2_${JOBTAG} --tee --research-md ${ROOT}/artifacts/agent_runs/research_agent_v2_${JOBTAG}.md --sqlite-db ${DB} --reset-research-section" \
-slurm/pace_smb_two_scientists_qwen.slurm
+slurm/pace_smb_two_scientists_qwen.slurm -->
 
+ROOT=/storage/home/hcoda1/4/qtran47/Agent-Driven-NLP-Optimizer
+JOBTAG=v2_$(date +%Y%m%d_%H%M%S)
+DB=$ROOT/artifacts/agent_runs/smb_agent_context_${JOBTAG}.sqlite
+LIVE=$ROOT/artifacts/agent_runs/live_results_${JOBTAG}.jsonl
+export SMB_TSTEP_BOUNDS="8.0,12.0"
+
+sbatch --export=ALL,\
+START_LOCAL_LLM=1,\
+LOCAL_LLM_USE_GPU=1,\
+OLLAMA_GPU_ID=0,\
+CUDA_VISIBLE_DEVICES=0,\
+OLLAMA_LLM_LIBRARY=cuda_v12,\
+SMB_FALLBACK_LLM_ENABLED=0,\
+SMB_LOCAL_LLM_MODEL=qwen35-9b-q4-32k:latest,\
+SMB_EXECUTIVE_LLM_MODEL=deepseek-r1:7b,\
+SMB_METHOD=agent_v2,\
+SMB_EXECUTIVE_ARBITRATION_ENABLED=1,\
+SMB_EXECUTIVE_MAX_REVISIONS=1,\
+SMB_SYSTEMATIC_INFEASIBILITY_K=5,\
+SMB_RANDOM_SEARCH_MODE=0,\
+SMB_IPOPT_WORKERS=2,\
+SMB_IPOPT_THREADS_PER_WORKER=2,\
+OLLAMA_MODELS=/storage/scratch1/4/qtran47/.ollama/models,\
+OLLAMA_HOST=127.0.0.1:11555,\
+OLLAMA_NUM_PARALLEL=1,\
+OLLAMA_MAX_LOADED_MODELS=1,\
+SMB_LLM_TIMEOUT_SECONDS=1200,\
+SMB_LLM_MAX_RETRIES=1,\
+SMB_LLM_MAX_TOKENS=800,\
+SMB_OLLAMA_PREWARM_ENABLED=1,\
+SMB_OLLAMA_PREWARM_MAX_SECONDS=180,\
+SMB_SKIP_INITIAL_PLAN_LLM=1,\
+SMB_CONVERSATION_LOG_MODE=full,\
+SMB_CONVERSATION_RESPONSE_MAX_CHARS=10000,\
+SMB_LIVE_RESULTS_LOG=${LIVE},\
+SMB_OBJECTIVES_MAX_CHARS=1200,\
+SMB_LLM_SOUL_MAX_CHARS=900,\
+SMB_RESEARCH_TAIL_CHARS=600,\
+AGENT_ENTRYPOINT="${ROOT}/.venv/bin/python -m benchmarks.agent_runner --method agent_v2 --run-name agent_v2_${JOBTAG} --tee --research-md ${ROOT}/artifacts/agent_runs/research_agent_v2_${JOBTAG}.md --sqlite-db ${DB} --reset-research-section" \
+slurm/pace_smb_two_scientists_qwen.slurm
 
 
 
@@ -85,12 +127,12 @@ grep -Ei "GPULayers|loaded CUDA backend|offloaded .* layers to GPU" logs/ollama-
 
 ```bash
 # Live output/error
-tail -n 30 -f logs/smb-two-scientists-5078352.out 
-tail -n 30 -f logs/smb-two-scientists-5077708.err
-tail -n 30 -f logs/ollama-smb-5078352.log 
+tail -n 30 -f logs/smb-two-scientists-5078856.out 
+tail -n 30 -f logs/smb-two-scientists-5078856.err
+tail -n 30 -f logs/ollama-smb-5078856.log 
 
 # CPU/GPU monitor
-srun --jobid=5078352 --overlap bash -lc '
+srun --jobid=5078856 --overlap bash -lc '
 while true; do
   clear
   echo "=== $(date) ==="
@@ -112,7 +154,7 @@ tail -F "$FILE" | jq -r '[.call_id,.role,(.metadata.iteration//""),(.assistant_r
 
 ## Use this for live A + B + C full text:
 
-JOB=5078352
+JOB=5078856
 FILE=$(ls -t artifacts/agent_runs/*.conversations.jsonl 2>/dev/null | head -1); echo "$FILE"
 tail -F "$FILE" | jq -r 'select(.role|test("^scientist_(a_pick|b_review|c_arbitrate)$")) | "\n--- call=\(.call_id) role=\(.role) iter=\(.metadata.iteration // "") backend=\(.final_backend) ---\n\(.assistant_response // .assistant_response_preview // "")\n"'
 

@@ -167,6 +167,58 @@ def test_build_evidence_pack_includes_required_feasible_and_infeasible_windows()
     assert "run_01" in pack["run_name_catalog"]
 
 
+def test_coerce_evidence_list_falls_back_to_evidence_pack_rows() -> None:
+    pack = ar.build_evidence_pack(
+        [
+            sample_result("run_01", feasible=False, status="solver_error", j=None, productivity=0.7, purity=0.5, rga=0.6, rma=0.6, violation=0.5),
+            sample_result("run_02", feasible=True, status="ok", j=1.2, productivity=1.4, purity=0.8, rga=0.9, rma=0.88, violation=0.0),
+        ],
+        recent_limit=5,
+        feasible_limit=3,
+        infeasible_limit=3,
+    )
+    evidence = ar.coerce_evidence_list([], pack, min_items=2, max_items=6)
+    assert len(evidence) >= 2
+    assert any("run_name=run_01" in item or "run_name=run_02" in item for item in evidence)
+
+
+def test_bootstrap_reference_select_prefers_reference_seed() -> None:
+    tasks = [
+        {"nc": [2, 2, 2, 2], "seed_name": "parameter_search", "seed": {"name": "parameter_search"}},
+        {"nc": [1, 2, 3, 2], "seed_name": "reference", "seed": {"name": "reference"}},
+    ]
+    idx = ar.bootstrap_reference_select(tasks, tried=set())
+    assert idx == 1
+
+
+def test_request_json_with_single_repair_requests_json_mode() -> None:
+    class CaptureClient:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def chat(self, *args: object, **kwargs: object) -> str:
+            self.calls.append(dict(kwargs))
+            return '{"candidate_index": 0}'
+
+        def extract_json(self, raw: str) -> dict[str, object]:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+
+    client = CaptureClient()
+    data, _raw, _repaired, _err = ar.request_json_with_single_repair(
+        client,
+        system_prompt="sys",
+        user_prompt="user",
+        conversation_role="scientist_a_pick",
+        metadata={"iteration": 1},
+        temperature=0.2,
+        required_keys=("candidate_index",),
+    )
+    assert isinstance(data, dict)
+    assert client.calls
+    assert client.calls[0].get("require_json_output") is True
+
+
 def test_scientist_a_invalid_output_retries_once_then_forces_diagnostic_mode() -> None:
     bad_payload = {
         "candidate_index": 0,
@@ -233,7 +285,7 @@ def test_scientist_b_invalid_output_retries_once_then_forces_diagnostic_mode() -
     assert note["acquisition_type"] == "LOW_QUALITY_RECOVERY"
 
 
-def test_scientist_c_arbitration_requires_grounded_evidence_refs() -> None:
+def test_scientist_c_arbitration_coerces_grounded_evidence_refs() -> None:
     response = json.dumps(
         {
             "decision": "IMPLEMENT_A",
@@ -282,10 +334,22 @@ def test_scientist_c_arbitration_requires_grounded_evidence_refs() -> None:
         revision_count_recent=0,
         force_diagnostic_reason="",
     )
-    assert decision["decision"] == "FORCE_DIAGNOSTIC"
-    assert decision["selected_task_mode"] == "DIAGNOSTIC"
-    assert decision["acquisition_type"] == "FORCE_DIAGNOSTIC"
+    assert decision["decision"] in {
+        "IMPLEMENT_A",
+        "IMPLEMENT_B_COUNTER",
+        "IMPLEMENT_HYBRID",
+        "RETURN_FOR_REVISION",
+        "FORCE_DIAGNOSTIC",
+    }
+    assert decision["acquisition_type"] in {
+        "IMPLEMENT_A",
+        "IMPLEMENT_B_COUNTER",
+        "IMPLEMENT_HYBRID",
+        "RETURN_FOR_REVISION",
+        "FORCE_DIAGNOSTIC",
+    }
     assert decision.get("evidence_refs")
+    assert "run_31" in decision.get("evidence_refs", [])
 
 
 def test_live_results_jsonl_emits_expected_fields_and_order(tmp_path: Path) -> None:

@@ -123,6 +123,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=int(os.environ.get("SMB_SYSTEMATIC_INFEASIBILITY_K", "5")),
     )
     parser.add_argument(
+        "--bootstrap-reference-runs",
+        type=int,
+        default=int(os.environ.get("SMB_BOOTSTRAP_REFERENCE_RUNS", "2")),
+    )
+    parser.add_argument(
         "--random-search-mode",
         type=int,
         default=int(os.environ.get("SMB_RANDOM_SEARCH_MODE", "0")),
@@ -941,6 +946,86 @@ def normalize_evidence_refs(value: object, max_items: int = 8) -> List[str]:
     return [item.strip() for item in refs if str(item).strip()]
 
 
+def build_evidence_fallback_items(evidence_pack: Dict[str, object], max_items: int = 8) -> List[str]:
+    rows: List[Dict[str, object]] = []
+    for key in ("recent_runs", "top_feasible", "top_infeasible"):
+        value = evidence_pack.get(key)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    rows.append(item)
+    items: List[str] = []
+    seen_run_names: set[str] = set()
+    for row in rows:
+        run_name = str(row.get("run_name", "")).strip()
+        if not run_name or run_name in seen_run_names:
+            continue
+        seen_run_names.add(run_name)
+        items.append(
+            "run_name="
+            + run_name
+            + f" status={row.get('status')} feasible={row.get('feasible')} "
+            + f"prod={row.get('productivity')} purity={row.get('purity')} "
+            + f"rGA={row.get('recovery_ga')} rMA={row.get('recovery_ma')} "
+            + f"viol={row.get('normalized_total_violation')}"
+        )
+        if len(items) >= max_items:
+            break
+    if not items:
+        catalog = normalize_text_list(evidence_pack.get("run_name_catalog"), max_items=max_items)
+        for run_name in catalog:
+            items.append(f"run_name={run_name} catalog_reference")
+            if len(items) >= max_items:
+                break
+    return items
+
+
+def coerce_evidence_list(
+    value: object,
+    evidence_pack: Dict[str, object],
+    *,
+    min_items: int = 2,
+    max_items: int = 8,
+) -> List[str]:
+    evidence = normalize_text_list(value, max_items=max_items)
+    fallback = build_evidence_fallback_items(evidence_pack, max_items=max_items)
+    for item in fallback:
+        if len(evidence) >= min_items:
+            break
+        if item not in evidence:
+            evidence.append(item)
+    while len(evidence) < min_items:
+        evidence.append("bootstrap_evidence_pending")
+    return evidence[:max_items]
+
+
+def coerce_grounded_evidence_refs(
+    value: object,
+    run_names: Sequence[str],
+    *,
+    min_items: int = 1,
+    max_items: int = 8,
+) -> List[str]:
+    refs = normalize_evidence_refs(value, max_items=max_items)
+    catalog = [str(item).strip() for item in run_names if str(item).strip()]
+    grounded: List[str] = []
+    for ref in refs:
+        if any((run_name == ref) or (run_name in ref) for run_name in catalog):
+            grounded.append(ref)
+    for run_name in catalog:
+        if len(grounded) >= min_items:
+            break
+        grounded.append(run_name)
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for ref in grounded:
+        if ref in seen:
+            continue
+        seen.add(ref)
+        deduped.append(ref)
+    return deduped[:max_items]
+
+
 def evidence_refs_are_grounded(evidence_refs: Sequence[str], run_names: Sequence[str]) -> bool:
     refs = [str(item).strip() for item in evidence_refs if str(item).strip()]
     catalog = [str(item).strip() for item in run_names if str(item).strip()]
@@ -974,6 +1059,7 @@ def request_json_with_single_repair(
         conversation_role=conversation_role,
         metadata=metadata,
         temperature=temperature,
+        require_json_output=True,
     )
     data = client.extract_json(raw)
     missing = required_keys_missing(data, required_keys)
@@ -1000,6 +1086,7 @@ def request_json_with_single_repair(
         conversation_role=f"{conversation_role}_repair",
         metadata={**metadata, "repair_reason": repair_reason},
         temperature=0.0,
+        require_json_output=True,
     )
     repair_data = client.extract_json(repair_raw)
     repair_missing = required_keys_missing(repair_data, required_keys)
@@ -1409,6 +1496,7 @@ class OpenAICompatClient:
         user_prompt: str,
         temperature: float,
         stop_sequences: Sequence[str],
+        require_json_output: bool,
     ) -> Tuple[Optional[str], str]:
         if not base_url or not model:
             return None, "missing_base_url_or_model"
@@ -1416,7 +1504,12 @@ class OpenAICompatClient:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
-        def build_payload(include_stop: bool, include_temperature: bool, include_max_tokens: bool) -> Dict[str, object]:
+        def build_payload(
+            include_stop: bool,
+            include_temperature: bool,
+            include_max_tokens: bool,
+            include_json_mode: bool,
+        ) -> Dict[str, object]:
             payload: Dict[str, object] = {
                 "model": model,
                 "messages": [
@@ -1430,17 +1523,29 @@ class OpenAICompatClient:
                 payload["stop"] = list(stop_sequences)
             if include_max_tokens:
                 payload["max_tokens"] = self.max_tokens
+            if include_json_mode:
+                payload["response_format"] = {"type": "json_object"}
             return payload
 
         # Some providers/models reject stop sequences, custom temperature controls,
         # or max_tokens naming. Try progressively simpler payloads.
-        payload_variants = [
-            ("full", build_payload(True, True, True)),
-            ("no_stop", build_payload(False, True, True)),
-            ("no_temp", build_payload(True, False, True)),
-            ("no_stop_no_temp", build_payload(False, False, True)),
-            ("no_stop_no_temp_no_max", build_payload(False, False, False)),
+        payload_variants: List[Tuple[str, Dict[str, object]]] = []
+        base_shapes = [
+            ("full", True, True, True),
+            ("no_stop", False, True, True),
+            ("no_temp", True, False, True),
+            ("no_stop_no_temp", False, False, True),
+            ("no_stop_no_temp_no_max", False, False, False),
         ]
+        if require_json_output:
+            for name, include_stop, include_temperature, include_max_tokens in base_shapes:
+                payload_variants.append(
+                    (f"json_{name}", build_payload(include_stop, include_temperature, include_max_tokens, True))
+                )
+        for name, include_stop, include_temperature, include_max_tokens in base_shapes:
+            payload_variants.append(
+                (name, build_payload(include_stop, include_temperature, include_max_tokens, False))
+            )
         last_error = "unknown_error"
 
         for variant_name, payload in payload_variants:
@@ -1496,6 +1601,17 @@ class OpenAICompatClient:
                         and ("unsupported" in response_body.lower() or "not supported" in response_body.lower())
                     ):
                         break
+                    # If provider rejects response_format JSON mode, retry without it.
+                    if (
+                        exc.code == 400
+                        and "response_format" in payload
+                        and (
+                            "response_format" in response_body.lower()
+                            or "json_object" in response_body.lower()
+                            or "json mode" in response_body.lower()
+                        )
+                    ):
+                        break
                     return None, last_error
                 except error.URLError as exc:
                     last_error = f"url_error_{str(exc.reason)}"
@@ -1527,6 +1643,7 @@ class OpenAICompatClient:
         metadata: Optional[Dict[str, object]] = None,
         temperature: float = 0.2,
         stop_sequences: Optional[Sequence[str]] = None,
+        require_json_output: bool = False,
     ) -> Optional[str]:
         resolved_stop = tuple(stop_sequences or ("<|endoftext|>", "<|im_start|>", "<|im_end|>"))
         self.call_counter += 1
@@ -1551,6 +1668,7 @@ class OpenAICompatClient:
                 user_prompt,
                 temperature,
                 resolved_stop,
+                require_json_output,
             )
             record["attempts"].append(
                 {
@@ -1578,6 +1696,7 @@ class OpenAICompatClient:
                 user_prompt,
                 temperature,
                 resolved_stop,
+                require_json_output,
             )
             record["attempts"].append(
                 {
@@ -2797,6 +2916,16 @@ def deterministic_select(tasks: List[Dict[str, object]], tried: set[Tuple[Tuple[
     return 0
 
 
+def bootstrap_reference_select(tasks: List[Dict[str, object]], tried: set[Tuple[Tuple[int, ...], str]]) -> int:
+    for idx, task in enumerate(tasks):
+        key = (tuple(task["nc"]), str(task["seed_name"]))
+        if key in tried:
+            continue
+        if is_reference_seed_name(task.get("seed_name")):
+            return idx
+    return deterministic_select(tasks, tried)
+
+
 def is_reference_seed_name(seed_name: object) -> bool:
     return str(seed_name or "").strip().lower() == "reference"
 
@@ -3444,8 +3573,8 @@ def scientist_a_pick(
         idx = int(data["candidate_index"])
         if 0 <= idx < len(shortlist):
             reason_text = str(data.get("reason", "")).strip()
-            evidence = normalize_text_list(data.get("evidence"), max_items=8)
-            evidence_refs = normalize_evidence_refs(data.get("evidence_refs"), max_items=8)
+            evidence = coerce_evidence_list(data.get("evidence"), evidence_pack, min_items=2, max_items=8)
+            evidence_refs = coerce_grounded_evidence_refs(data.get("evidence_refs"), evidence_run_names, min_items=1, max_items=8)
             comparisons = normalize_text_list(data.get("comparison_to_previous"), max_items=8)
             last_two_comparisons = normalize_text_list(data.get("last_two_run_comparison"), max_items=4)
             flow_comparisons = normalize_text_list(data.get("flowrate_comparison"), max_items=6)
@@ -3454,14 +3583,6 @@ def scientist_a_pick(
             physics_rationale = str(data.get("physics_rationale", "")).strip()
             nc_comparisons = normalize_text_list(data.get("nc_competitor_comparison"), max_items=8)
             has_history = (len(results) > 0) or (sqlite_total_records_from_excerpt(sqlite_context_excerpt) > 0)
-            if len(evidence) < 2:
-                return default_index, {
-                    "mode": "deterministic",
-                    "reason": "Rejected LLM proposal: missing minimum evidence detail.",
-                    "priority_updates": [
-                        "Require at least two concrete evidence items (history/constraints/compute/signals) before proposing experiments."
-                    ],
-                }
             if evidence_run_names:
                 if len(evidence_refs) < 1 or not evidence_refs_are_grounded(evidence_refs, evidence_run_names):
                     return default_index, {
@@ -3885,7 +4006,7 @@ def scientist_b_review(
         }
     if data and str(data.get("decision", "")).lower() in {"approve", "reject"}:
         reason_text = str(data.get("reason", "")).strip()
-        evidence_refs = normalize_evidence_refs(data.get("evidence_refs"), max_items=8)
+        evidence_refs = coerce_grounded_evidence_refs(data.get("evidence_refs"), evidence_run_names, min_items=1, max_items=8)
         comparisons = normalize_text_list(data.get("comparison_assessment"), max_items=8)
         last_two_audit = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
         flow_audit = normalize_text_list(data.get("flowrate_audit"), max_items=6)
@@ -4327,7 +4448,7 @@ def scientist_c_arbitrate(
                 "FORCE_DIAGNOSTIC",
             }
             if decision in valid:
-                evidence_refs = normalize_evidence_refs(data.get("evidence_refs"), max_items=8)
+                evidence_refs = coerce_grounded_evidence_refs(data.get("evidence_refs"), evidence_run_names, min_items=1, max_items=8)
                 if evidence_run_names and not evidence_refs_are_grounded(evidence_refs, evidence_run_names):
                     data["decision"] = "FORCE_DIAGNOSTIC"
                     data["reason"] = "Executive output missing grounded evidence_refs; forcing diagnostic path."
@@ -5207,53 +5328,78 @@ def main() -> int:
                     force_diagnostic_next_iteration = True
                     force_diagnostic_reason = str(infeasibility_state.get("reason", ""))
                 continue
-            try:
-                progress_log(f"AGENT: Scientist_A pick start (iter={search_iteration})")
-                idx, a_note = scientist_a_pick(
-                    client,
-                    search_tasks,
-                    search_results,
-                    tried,
-                    args,
-                    objectives_excerpt,
-                    soul_excerpt,
-                    code_context_excerpt,
-                    compute_context_excerpt,
-                    constraint_context_excerpt,
-                    nc_strategy_excerpt,
-                    research_excerpt,
-                    current_priorities,
-                    sqlite_excerpt,
-                    search_hours_used,
-                    search_iteration,
-                    heuristics_context=heuristics_excerpt,
-                    convergence_context=convergence_excerpt,
-                )
-                progress_log(f"AGENT: Scientist_A pick done (iter={search_iteration})")
-            except Exception as exc:
-                idx = deterministic_select(search_tasks, tried)
+            bootstrap_target = max(0, int(getattr(args, "bootstrap_reference_runs", 0)))
+            bootstrap_mode = bootstrap_target > 0 and len(search_results) < bootstrap_target
+            if bootstrap_mode:
+                idx = bootstrap_reference_select(search_tasks, tried)
                 a_note = {
-                    "mode": "deterministic_error",
-                    "reason": f"Scientist_A exception fallback: {type(exc).__name__}: {exc}",
-                    "traceback": traceback.format_exc(),
+                    "mode": "bootstrap_reference",
+                    "decision": "bootstrap_reference",
+                    "reason": (
+                        "Bootstrap reference run executed to seed evidence before strict A/B/C gating "
+                        f"({len(search_results) + 1}/{bootstrap_target})."
+                    ),
+                    "acquisition_type": "BOOTSTRAP_REFERENCE",
+                    "bootstrap_reference": True,
                     "priority_updates": [
-                        "Scientist_A call failed; fallback to deterministic first-untried candidate to keep run alive."
+                        "Bootstrap mode active: collect baseline run evidence before relying on LLM proposal quality."
                     ],
                     "evidence": [
-                        "LLM Scientist_A call raised an exception.",
-                        "Using deterministic fallback to avoid hard stop.",
+                        "No/limited prior evidence available; run deterministic reference probe first."
                     ],
                     "comparison_to_previous": [
-                        "No model comparison available due to Scientist_A exception."
+                        "Bootstrap reference run to establish initial baseline for data-grounded A/B/C comparisons."
                     ],
-                    "nc_competitor_comparison": [
-                        "No model NC comparison available due to Scientist_A exception."
-                    ],
-                    "failure_criteria": [
-                        "Reject if solver status is solver_error/other with no usable primal values.",
-                        "Reject if normalized_total_violation does not improve against current best evidence.",
-                    ],
+                    "evidence_refs": [],
                 }
+            else:
+                try:
+                    progress_log(f"AGENT: Scientist_A pick start (iter={search_iteration})")
+                    idx, a_note = scientist_a_pick(
+                        client,
+                        search_tasks,
+                        search_results,
+                        tried,
+                        args,
+                        objectives_excerpt,
+                        soul_excerpt,
+                        code_context_excerpt,
+                        compute_context_excerpt,
+                        constraint_context_excerpt,
+                        nc_strategy_excerpt,
+                        research_excerpt,
+                        current_priorities,
+                        sqlite_excerpt,
+                        search_hours_used,
+                        search_iteration,
+                        heuristics_context=heuristics_excerpt,
+                        convergence_context=convergence_excerpt,
+                    )
+                    progress_log(f"AGENT: Scientist_A pick done (iter={search_iteration})")
+                except Exception as exc:
+                    idx = deterministic_select(search_tasks, tried)
+                    a_note = {
+                        "mode": "deterministic_error",
+                        "reason": f"Scientist_A exception fallback: {type(exc).__name__}: {exc}",
+                        "traceback": traceback.format_exc(),
+                        "priority_updates": [
+                            "Scientist_A call failed; fallback to deterministic first-untried candidate to keep run alive."
+                        ],
+                        "evidence": [
+                            "LLM Scientist_A call raised an exception.",
+                            "Using deterministic fallback to avoid hard stop.",
+                        ],
+                        "comparison_to_previous": [
+                            "No model comparison available due to Scientist_A exception."
+                        ],
+                        "nc_competitor_comparison": [
+                            "No model NC comparison available due to Scientist_A exception."
+                        ],
+                        "failure_criteria": [
+                            "Reject if solver status is solver_error/other with no usable primal values.",
+                            "Reject if normalized_total_violation does not improve against current best evidence.",
+                        ],
+                    }
             a_proposed_idx = idx
             a_proposed_task = dict(search_tasks[a_proposed_idx])
             idx, probe_gate_note = apply_probe_reference_gate(
@@ -5309,7 +5455,18 @@ def main() -> int:
                 )
                 continue
             best_so_far = rank_any_results(search_results)[0] if search_results else None
-            if bool(int(getattr(args, "single_scientist_mode", 0))):
+            if bootstrap_mode:
+                b_note = {
+                    "mode": "bootstrap_reference",
+                    "decision": "approve",
+                    "reason": "Bootstrap reference run bypassed Scientist_B review to avoid startup deadlock.",
+                    "acquisition_type": "BOOTSTRAP_REFERENCE",
+                    "priority_updates": [
+                        "Bootstrap mode active: bypass Scientist_B for initial deterministic evidence collection."
+                    ],
+                    "risk_flags": [],
+                }
+            elif bool(int(getattr(args, "single_scientist_mode", 0))):
                 b_note = single_scientist_policy_review(task, best_so_far)
             else:
                 try:
