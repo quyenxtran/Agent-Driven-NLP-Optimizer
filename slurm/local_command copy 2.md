@@ -3,7 +3,7 @@
 ```bash
 # Local: commit and push
 git add .
-git commit -m "update 3-4 reference per NC before evaluation"
+git commit -m "update inner and outter loop decision policy"
 git push origin main
 
 # On PACE
@@ -162,6 +162,7 @@ slurm/pace_smb_two_scientists_qwen.slurm
 
 
 
+
 ## Qwen 3.5 27B
 
 ROOT=/storage/home/hcoda1/4/qtran47/Agent-Driven-NLP-Optimizer
@@ -267,6 +268,8 @@ SMB_LOCAL_LLM_MODEL=gpt-5.4-mini,\
 SMB_EXECUTIVE_LLM_MODEL=gpt-5.4-mini,\
 OLLAMA_BASE_URL=https://api.openai.com/v1,\
 OLLAMA_API_KEY=${OPENAI_API_KEY},\
+SMB_NC_LIBRARY=all,\
+SMB_SINGLE_SCIENTIST_MODE=0,\
 SMB_LLM_TIMEOUT_SECONDS=1200,\
 SMB_LLM_MAX_RETRIES=2,\
 SMB_LLM_MAX_TOKENS=1000,\
@@ -279,32 +282,94 @@ SMB_CONVERSATION_LOG_MODE=full,\
 SMB_CONVERSATION_RESPONSE_MAX_CHARS=10000,\
 SMB_LIVE_RESULTS_LOG=${LIVE},\
 SMB_BOOTSTRAP_REFERENCE_RUNS=0,\
-SMB_SCREENING_RUNS_MIN_PER_NC=3,\
-SMB_SCREENING_RUNS_MAX_PER_NC=4,\
+SMB_SCREENING_RUNS_MIN_PER_NC=4,\
+SMB_SCREENING_RUNS_MAX_PER_NC=5,\
 SMB_NEAR_FEASIBLE_VIOLATION_THRESHOLD=1e-5,\
 SMB_NEAR_FEASIBLE_PURITY_SLACK=0.005,\
 SMB_NEAR_FEASIBLE_RECOVERY_SLACK=0.005,\
-SMB_SCREENING_IPOPT_MAX_ITER=800,\
-SMB_SCREENING_IPOPT_TOL=1e-4,\
-SMB_SCREENING_IPOPT_ACCEPTABLE_TOL=1e-3,\
-SMB_NEAR_FEASIBLE_IPOPT_MAX_ITER=1500,\
-SMB_NEAR_FEASIBLE_IPOPT_TOL=5e-5,\
-SMB_NEAR_FEASIBLE_IPOPT_ACCEPTABLE_TOL=5e-4,\
-SMB_FINALIZATION_IPOPT_MAX_ITER=1000,\
-SMB_FINALIZATION_IPOPT_TOL=1e-4,\
-SMB_FINALIZATION_IPOPT_ACCEPTABLE_TOL=1e-3,\
-SMB_IPOPT_WORKERS=2,\
-SMB_IPOPT_THREADS_PER_WORKER=2,\
+SMB_IPOPT_WORKERS=4,\
+SMB_IPOPT_THREADS_PER_WORKER=1,\
+SMB_SCREENING_IPOPT_THREADS_PER_WORKER=1,\
+SMB_SCREENING_IPOPT_MAX_SOLVE_SECONDS=180,\
+SMB_NEAR_FEASIBLE_IPOPT_THREADS_PER_WORKER=4,\
+SMB_NEAR_FEASIBLE_IPOPT_MAX_SOLVE_SECONDS=300,\
+SMB_FINALIZATION_IPOPT_THREADS_PER_WORKER=4,\
+SMB_FINALIZATION_IPOPT_MAX_SOLVE_SECONDS=300,\
+SMB_MAX_SOLVE_SECONDS=300,\
 SMB_MAX_PUMP_FLOW_ML_MIN=2.5,\
 SMB_MAX_PUMP_FLOW_RAF_ML_MIN=5.0,\
 SMB_FRAF_GUARD_MARGIN=0.05,\
-OMP_NUM_THREADS=2,\
-MKL_NUM_THREADS=2,\
-OPENBLAS_NUM_THREADS=2,\
-NUMEXPR_NUM_THREADS=2,\
+OMP_NUM_THREADS=4,\
+MKL_NUM_THREADS=4,\
+OPENBLAS_NUM_THREADS=4,\
+NUMEXPR_NUM_THREADS=4,\
 AGENT_ENTRYPOINT="${ROOT}/.venv/bin/python -m benchmarks.agent_runner --method agent_v2 --run-name agent_v2_${JOBTAG} --tee --research-md ${ROOT}/artifacts/agent_runs/research_agent_v2_${JOBTAG}.md --sqlite-db ${DB} --reset-research-section --llm-base-url https://api.openai.com/v1 --llm-model gpt-5.4-mini --llm-api-key ${OPENAI_API_KEY} --executive-llm-model gpt-5.4-mini --llm-soul-a-file ${ROOT}/agents/LLM_SOUL_A.md --llm-soul-b-file ${ROOT}/agents/LLM_SOUL_B.md --llm-soul-c-file ${ROOT}/agents/LLM_SOUL_C.md" \
 slurm/pace_smb_two_scientists_gpt.slurm
 
+
+
+
+sbatch slurm/pace_smb_two_scientists_gpt.slurm
+
+
+
+
+
+export OPENROUTER_API_KEY="YOUR_KEY_HERE"
+
+ROOT=/storage/home/hcoda1/4/qtran47/Agent-Driven-NLP-Optimizer
+JOBTAG=or_$(date +%Y%m%d_%H%M%S)
+DB=$ROOT/artifacts/agent_runs/smb_agent_context_${JOBTAG}.sqlite
+LIVE=$ROOT/artifacts/agent_runs/live_results_${JOBTAG}.jsonl
+export SMB_TSTEP_BOUNDS="8.0,12.0"
+export SMB_FRAF_BOUNDS="0.5,5.0"
+
+sbatch --export=ALL,\
+START_LOCAL_LLM=0,\
+LOCAL_LLM_USE_GPU=0,\
+SMB_FALLBACK_LLM_ENABLED=0,\
+SMB_LOCAL_LLM_MODEL=stepfun/step-3.5-flash:free,\
+SMB_EXECUTIVE_LLM_MODEL=stepfun/step-3.5-flash:free,\
+OLLAMA_BASE_URL=https://openrouter.ai/api/v1,\
+OLLAMA_API_KEY=${OPENROUTER_API_KEY},\
+SMB_NC_LIBRARY=all,\
+SMB_SINGLE_SCIENTIST_MODE=0,\
+SMB_LLM_TIMEOUT_SECONDS=1200,\
+SMB_LLM_MAX_RETRIES=2,\
+SMB_LLM_MAX_TOKENS=1000,\
+SMB_METHOD=agent_v2,\
+SMB_EXECUTIVE_ARBITRATION_ENABLED=1,\
+SMB_EXECUTIVE_MAX_REVISIONS=1,\
+SMB_SYSTEMATIC_INFEASIBILITY_K=8,\
+SMB_RANDOM_SEARCH_MODE=0,\
+SMB_CONVERSATION_LOG_MODE=full,\
+SMB_CONVERSATION_RESPONSE_MAX_CHARS=10000,\
+SMB_LIVE_RESULTS_LOG=${LIVE},\
+SMB_BOOTSTRAP_REFERENCE_RUNS=0,\
+SMB_SCREENING_RUNS_PER_NC=4,\
+SMB_SCREENING_RUNS_MIN_PER_NC=4,\
+SMB_SCREENING_RUNS_MAX_PER_NC=5,\
+SMB_NEAR_FEASIBLE_VIOLATION_THRESHOLD=1e-5,\
+SMB_NEAR_FEASIBLE_PURITY_SLACK=0.005,\
+SMB_NEAR_FEASIBLE_RECOVERY_SLACK=0.005,\
+SMB_IPOPT_WORKERS=4,\
+SMB_IPOPT_THREADS_PER_WORKER=1,\
+SMB_SCREENING_IPOPT_THREADS_PER_WORKER=1,\
+SMB_SCREENING_IPOPT_MAX_SOLVE_SECONDS=180,\
+SMB_NEAR_FEASIBLE_IPOPT_THREADS_PER_WORKER=4,\
+SMB_NEAR_FEASIBLE_IPOPT_MAX_SOLVE_SECONDS=300,\
+SMB_FINALIZATION_IPOPT_THREADS_PER_WORKER=4,\
+SMB_FINALIZATION_IPOPT_MAX_SOLVE_SECONDS=300,\
+SMB_MAX_SOLVE_SECONDS=300,\
+SMB_MAX_PUMP_FLOW_ML_MIN=2.5,\
+SMB_MAX_PUMP_FLOW_RAF_ML_MIN=5.0,\
+SMB_FRAF_GUARD_MARGIN=0.05,\
+OMP_NUM_THREADS=4,\
+MKL_NUM_THREADS=4,\
+OPENBLAS_NUM_THREADS=4,\
+NUMEXPR_NUM_THREADS=4,\
+AGENT_ENTRYPOINT="${ROOT}/.venv/bin/python -m benchmarks.agent_runner --method agent_v2 --run-name agent_v2_${JOBTAG} --tee --research-md ${ROOT}/artifacts/agent_runs/research_agent_v2_${JOBTAG}.md --sqlite-db ${DB} --reset-research-section --llm-base-url https://openrouter.ai/api/v1 --llm-model deepseek/deepseek-chat-v3.1 --llm-api-key ${OPENROUTER_API_KEY} --executive-llm-model deepseek/deepseek-chat-v3.1 --llm-soul-a-file ${ROOT}/agents/LLM_SOUL_A.md --llm-soul-b-file ${ROOT}/agents/LLM_SOUL_B.md --llm-soul-c-file ${ROOT}/agents/LLM_SOUL_C.md" \
+slurm/pace_smb_two_scientists_openrouter.slurm
 
 
 ## 3) Random baseline run
@@ -355,6 +420,8 @@ slurm/pace_smb_two_scientists_qwen.slurm
 
 
 
+
+
 ## Monitoring a running job
 After start, verify GPU really engaged:
 JOB=5078352
@@ -362,12 +429,15 @@ grep -Ei "GPULayers|loaded CUDA backend|offloaded .* layers to GPU" logs/ollama-
 
 ```bash
 # Live output/error
-tail -n 30 -f logs/smb-two-scientists-5138606.out 
+tail -n 30 -f logs/smb-two-scientists-5140751.out 
 tail -n 30 -f logs/smb-two-scientists-5079126.err
 tail -n 30 -f logs/ollama-smb-5130343.log 
 
+
+tail -n 30 -f logs/smb-two-scientists-gpt-5140751.out 
+
 # CPU/GPU monitor
-srun --jobid=5138606 --overlap bash -lc '
+srun --jobid=5140751 --overlap bash -lc '
 while true; do
   clear
   echo "=== $(date) ==="
@@ -381,7 +451,7 @@ while true; do
 done'
 
 ```
-JOB=5138606
+JOB=5140751
 srun --jobid=$JOB --overlap bash -lc 'echo workers=$SMB_IPOPT_WORKERS threads=$SMB_IPOPT_THREADS_PER_WORKER cpus=$SLURM_CPUS_PER_TASK; pgrep -af ipopt'
 
 
@@ -394,14 +464,46 @@ tail -F "$FILE" | jq -r '[.call_id,.role,(.metadata.iteration//""),(.assistant_r
 
 ## Use this for live A + B + C full text:
 
-JOB=5138606
+JOB=5140751
 FILE=$(ls -t artifacts/agent_runs/agent-runner.${JOB}.*.conversations.jsonl 2>/dev/null | head -1)
 LIVE=$(ls -t artifacts/agent_runs/live_results_*.jsonl 2>/dev/null | head -1)
 
 tail -F "$FILE" | jq -r '
   select(.role|test("^scientist_(a_pick|b_review|c_arbitrate)(?:_repair)?$")) |
-  "\n--- call=\(.call_id) role=\(.role) iter=\(.metadata.iteration // "") backend=\(.final_backend // "") ---\n\(.assistant_response // .assistant_response_preview // "<empty>")\n"
+  "HEADER\t--- call=\(.call_id) role=\(.role) iter=\(.metadata.iteration // "") backend=\(.final_backend // "") ---",
+  "BODY\t" + (
+    (.assistant_response // .assistant_response_preview // "{}")
+    | fromjson?
+    | if . == null then {"raw":"<parse_failed>"} else . end
+    | tojson
+  )
+' | while IFS=$'\t' read -r kind payload; do
+  if [ "$kind" = "HEADER" ]; then
+    printf '\n%s\n' "$payload"
+  else
+    printf '%s\n' "$payload" | jq .
+  fi
+done
+
+
+
+JOB=5140751
+FILE=$(ls -t artifacts/agent_runs/agent-runner.${JOB}.*.conversations.jsonl 2>/dev/null | head -1)
+LIVE=$(ls -t artifacts/agent_runs/live_results_*.jsonl 2>/dev/null | head -1)
+tail -F "$FILE" | jq -r '
+  select(.role|test("^scientist_(a_pick|b_review|c_arbitrate)(?:_repair)?$")) |
+  (.assistant_response // .assistant_response_preview // "{}")
+  | fromjson?
+  | select(. != null)
+  | [
+      .candidate_index,
+      .acquisition_type,
+      .convergence_assessment,
+      .reason,
+      .physics_rationale
+    ] | @tsv
 '
+
 
 
 ## Use this for a live structured quality view (decision/reason/comparison counts/physics field):
