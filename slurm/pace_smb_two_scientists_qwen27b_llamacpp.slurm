@@ -6,10 +6,10 @@
 # Model: Qwen3.5-27B-Q4_K_M (already downloaded in scratch storage)
 #
 # Suggested submissions:
-# sbatch pace_smb_two_scientists_qwen35_llamacpp.slurm
-# sbatch --export=ALL,BUILD_LLAMACPP=1 pace_smb_two_scientists_qwen35_llamacpp.slurm
+# sbatch pace_smb_two_scientists_qwen27b_llamacpp.slurm
+# sbatch --export=ALL,BUILD_LLAMACPP=1 pace_smb_two_scientists_qwen27b_llamacpp.slurm
 
-#SBATCH --job-name=smb-qwen35-llamacpp
+#SBATCH --job-name=smb-qwen27b-llamacpp
 #SBATCH -A gts-sn73
 #SBATCH --qos=inferno
 #SBATCH -p gpu-rtx6000
@@ -63,7 +63,7 @@ export PYTHONUNBUFFERED=1
 
 # Directories
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/logs}"
-ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/parse_qwen35_llamacpp}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/parse_qwen27b_llamacpp}"
 mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -77,7 +77,7 @@ LLAMACPP_MODEL_PATH="${LLAMACPP_MODEL_PATH:-/storage/scratch1/4/qtran47/models/g
 LLAMACPP_PORT="${LLAMACPP_PORT:-8000}"
 LLAMACPP_HOST="127.0.0.1"
 LLAMACPP_BASE_URL="http://${LLAMACPP_HOST}:${LLAMACPP_PORT}/v1"
-LLAMACPP_API_LOG="${LOG_DIR}/llamacpp-qwen35-${SLURM_JOB_ID:-local}.log"
+LLAMACPP_API_LOG="${LOG_DIR}/llamacpp-qwen27b-${SLURM_JOB_ID:-local}.log"
 
 # GPU configuration
 LLAMACPP_GPU_ID="${LLAMACPP_GPU_ID:-0}"
@@ -248,7 +248,7 @@ echo ""
 
 # Run the two-scientist agent benchmark
 "${REPO_ROOT}/.venv/bin/python" -m benchmarks.agent_runner \
-  --run-name "qwen35_llamacpp_parse" \
+  --run-name "qwen27b_llamacpp_parse" \
   --artifact-dir "$ARTIFACT_DIR" \
   --benchmark-hours 11.0 \
   --search-hours 10.0 \
