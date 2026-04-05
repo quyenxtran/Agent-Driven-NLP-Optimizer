@@ -81,7 +81,7 @@ echo "  • Estimated runtime: 4-6 hours (100 opt/NC × 31 NCs × ~90s each)"
 echo ""
 
 echo "Running Phase 2 with LHS seeding (100 seeds per NC for 5D coverage)..."
-echo "Using subprocess with extended timeout (300s per seed optimization)"
+echo "Using subprocess with extended timeout (900s per seed optimization)"
 "${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_lhs_seeding \
   --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
          "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
@@ -94,7 +94,7 @@ echo "Using subprocess with extended timeout (300s per seed optimization)"
   --artifact-dir "$ARTIFACT_DIR" \
   --solver-name "ipopt" \
   --linear-solver "ma97" \
-  --timeout 600 \
+  --timeout 900 \
   --verbose
 
 EXIT_CODE=$?
