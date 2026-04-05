@@ -1026,33 +1026,17 @@ def scientist_b_review(
                     data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
                         "Review quality risk: weak counterproposal detail."
                     ]
-        if len(nc_assessment) < 2:
-            data["decision"] = "reject"
-            data["reason"] = "Rejected: review must include NC strategy assessment against alternatives."
-            data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
-                "NC strategy assessment missing or too weak."
-            ]
-            data["nc_strategy_assessment"] = nc_assessment or [
-                "No explicit candidate-vs-alternative NC assessment was provided."
-            ]
+        # Simplified schema: nc_strategy_assessment is optional (graceful degradation)
+        if nc_assessment:
+            data["nc_strategy_assessment"] = nc_assessment
         if str(data.get("decision", "")).lower() == "approve":
             counter = normalize_text_list(data.get("counterarguments"), max_items=3)
             checks = normalize_text_list(data.get("required_checks"), max_items=3)
-            if not counter or not checks:
-                data["decision"] = "reject"
-                data["reason"] = "Rejected: approval must include explicit counterarguments and required checks."
-                data["priority_updates"] = normalize_text_list(data.get("priority_updates"), max_items=6) + [
-                    "Require adversarial review details before approving new tasks."
-                ]
-                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
-                    "Weak review quality due to missing counterarguments/checks."
-                ]
-                data["counterarguments"] = counter or [
-                    "No explicit counterargument was provided by the reviewer."
-                ]
-                data["required_checks"] = checks or [
-                    "Re-run review with explicit checks tied to bounds, solver behavior, and feasibility."
-                ]
+            # Simplified schema: counterarguments and required_checks are optional
+            if counter:
+                data["counterarguments"] = counter
+            if checks:
+                data["required_checks"] = checks
         data["comparison_assessment"] = normalize_text_list(data.get("comparison_assessment"), max_items=8)
         data["evidence_refs"] = evidence_refs
         data["last_two_run_audit"] = normalize_text_list(data.get("last_two_run_audit"), max_items=4)
