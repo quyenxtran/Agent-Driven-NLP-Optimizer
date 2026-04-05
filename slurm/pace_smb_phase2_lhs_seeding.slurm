@@ -101,6 +101,12 @@ echo "Expected speedup: 4x (47 hours → ~12 hours)"
   --artifact-dir "$ARTIFACT_DIR" \
   --timeout 120 \
   --n-workers 4 \
+  --nfex 4 \
+  --nfet 2 \
+  --ncp 1 \
+  --purity-min 0.15 \
+  --recovery-ga-min 0.15 \
+  --recovery-ma-min 0.15 \
   --verbose
 
 EXIT_CODE=$?
