@@ -1597,7 +1597,7 @@ def main() -> int:
                 decision="ITERATION_START",
                 reason=f"tried={len(tried)}/{len(search_tasks)} search_hours_used={search_hours_used:.4f}",
             )
-            sqlite_excerpt = sqlite_history_context(sqlite_conn)
+            sqlite_excerpt = sqlite_history_context(sqlite_conn, optimize_context=True)
             nc_strategy_excerpt = nc_strategy_board(sqlite_conn, nc_library_values)
             research_excerpt = read_research_tail(research_path, args.research_tail_chars)
             convergence_excerpt = sqlite_convergence_context(sqlite_conn, args.run_name)

@@ -38,6 +38,12 @@ from .agent_evidence import (
     text_mentions_topology_signals,
 )
 from .agent_llm_client import OpenAICompatClient, request_json_with_single_repair
+from .agent_json_parser import (
+    add_few_shot_examples_to_prompt,
+    apply_defaults_for_missing_keys,
+    parse_json_with_fallbacks,
+    validate_required_keys,
+)
 from .agent_policy import (
     deterministic_review,
     nc_prior_score,
@@ -692,6 +698,50 @@ def scientist_b_review(
             Effective bounded candidate (actual flows to be run):
             {json.dumps(effective_task_brief, separators=(",", ":"))}
 
+            ## Example valid review responses:
+
+            ### Example 1: APPROVE with concerns
+            {{
+              "decision": "approve",
+              "reason": "Explores F1=2.0 (vs reference 2.5). R-1 at [2,2,2,2] F1=2.5 achieved J=45.2, purity=0.61.",
+              "evidence_refs": ["smb_qwen_run_0047"],
+              "comparison_assessment": ["vs R-1 [2,2,2,2] F1=2.5: ΔF1=-0.5, expect ΔJ≈-5%, Δpurity≈+2%"],
+              "last_two_run_audit": ["R-1: smb_qwen_run_0047 [2,2,2,2] feasible=yes", "R-2: other"],
+              "flowrate_audit": ["ΔFfeed=-0.15, ΔF1=-0.50, ΔFdes=-0.30"],
+              "delta_audit": ["vs R-1: Δprod=-4.2%, Δpurity=+1.8%"],
+              "column_topology_audit": ["vs R-1: nc=[2,2,2,2], ΔZ1=-0.8cm"],
+              "physics_audit": "Zone I: balanced OK. Zone II: Fdes×c balanced.",
+              "counterproposal_run": {{"nc": [2,2,2,2], "flow_adjustments": {{"Ffeed": 0.0}}, "expected_metric_effect": {{"delta_productivity": 0.0}}, "physics_justification": "test"}},
+              "nc_strategy_assessment": ["[2,2,2,2] explored well"],
+              "compute_assessment": "~100s",
+              "counterarguments": ["risk"],
+              "required_checks": ["check balance"],
+              "priority_updates": ["H3 approved"],
+              "risk_flags": ["throughput_risk"]
+            }}
+
+            ### Example 2: REJECT
+            {{
+              "decision": "reject",
+              "reason": "Duplicate of R-1. Same nc=[2,2,2,2], already tested.",
+              "evidence_refs": ["smb_qwen_run_0047"],
+              "comparison_assessment": ["vs R-1: identical config"],
+              "last_two_run_audit": ["R-1: smb_qwen_run_0047 [2,2,2,2]", "R-2: other"],
+              "flowrate_audit": ["no change"],
+              "delta_audit": ["no change"],
+              "column_topology_audit": ["identical"],
+              "physics_audit": "Same as R-1.",
+              "counterproposal_run": {{"nc": [2,2,1,3], "flow_adjustments": {{"F1": -0.30}}, "expected_metric_effect": {{"delta_productivity": -2.0}}, "physics_justification": "different topology"}},
+              "nc_strategy_assessment": ["[2,2,2,2] saturated"],
+              "compute_assessment": "skip",
+              "counterarguments": ["duplicate"],
+              "required_checks": [],
+              "priority_updates": ["penalize duplicates"],
+              "risk_flags": ["duplicate"]
+            }}
+
+            CRITICAL: Your response MUST be valid JSON. Return ONLY JSON, no markdown, no explanation.
+
             Respond with this JSON (fill every field — no placeholders):
             {{
               "decision": "approve" or "reject",
@@ -761,8 +811,17 @@ def scientist_b_review(
             f"Current best result: {summarize_result(best_result) if best_result else 'None yet.'}\n\n"
             f"Recent two completed runs:\n{recent_two_compact}"
         )
-    data, raw, _repaired, repair_error = request_json_with_single_repair(
-        client,
+    required_keys = (
+        "decision",
+        "reason",
+        "comparison_assessment",
+        "physics_audit",
+        "counterproposal_run",
+        "evidence_refs",
+    )
+
+    # Query LLM once with few-shot examples
+    raw = client.chat(
         system_prompt="You are a hard-nosed numerical reviewer. Return JSON only and challenge weak proposals.",
         user_prompt=prompt,
         conversation_role="scientist_b_review",
@@ -774,31 +833,23 @@ def scientist_b_review(
             "has_best_result": best_result is not None,
         },
         temperature=0.1,
-        required_keys=(
-            "decision",
-            "reason",
-            "comparison_assessment",
-            "physics_audit",
-            "counterproposal_run",
-            "evidence_refs",
-        ),
+        require_json_output=True,
     )
-    if not isinstance(data, dict):
-        return {
-            "mode": "low_quality_recovery",
-            "decision": "reject",
-            "reason": f"Scientist_B JSON failed after repair ({repair_error or 'invalid_output'}). Forcing diagnostic recovery.",
-            "low_quality_recovery": True,
-            "acquisition_type": "LOW_QUALITY_RECOVERY",
-            "priority_updates": [
-                "Scientist_B output failed strict JSON/evidence contract; force diagnostic path."
-            ],
-            "risk_flags": [
-                "Scientist_B output invalid after one repair retry."
-            ],
-            "prompt_warning": prompt_warning,
-            "raw": raw,
-        }
+
+    # Parse with multi-fallback strategy (no expensive repair cycles)
+    data, parse_status = parse_json_with_fallbacks(raw, required_keys, max_attempts=3)
+    is_valid, missing = validate_required_keys(data, required_keys)
+
+    # Apply defaults for missing keys (graceful degradation)
+    if data is None:
+        data = {}
+    data = apply_defaults_for_missing_keys(data, required_keys)
+
+    # Log parsing status
+    if parse_status != "success":
+        if not hasattr(data, "_parse_status"):
+            data["_parse_status"] = parse_status
+            data["_prompt_warning"] = prompt_warning or ""
     if data and str(data.get("decision", "")).lower() in {"approve", "reject"}:
         reason_text = str(data.get("reason", "")).strip()
         evidence_refs = coerce_grounded_evidence_refs(data.get("evidence_refs"), evidence_run_names, min_items=1, max_items=8)

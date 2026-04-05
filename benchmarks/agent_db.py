@@ -408,7 +408,7 @@ def sqlite_targeted_query(conn: sqlite3.Connection, query_type: str, **kwargs: o
     return "\n".join(lines) if lines else "No results."
 
 
-def sqlite_history_context(conn: sqlite3.Connection, max_feasible: int = 5, max_near: int = 5, max_recent: int = 6) -> str:
+def sqlite_history_context(conn: sqlite3.Connection, max_feasible: int = 5, max_near: int = 5, max_recent: int = 6, optimize_context: bool = True) -> str:
     counts = conn.execute(
         """
         SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN feasible=1 THEN 1 ELSE 0 END), 0) AS feasible_count
@@ -483,69 +483,71 @@ def sqlite_history_context(conn: sqlite3.Connection, max_feasible: int = 5, max_
     else:
         lines.append("- none")
 
-    lines.append("Recent composition snapshots (outlet CE/CR):")
-    comp_points: List[Dict[str, object]] = []
-    if recent_rows:
-        for row in recent_rows:
-            comp = composition_metrics_from_raw_json(str(row[16] or ""))
-            if not comp:
-                continue
-            point = {
-                "run_name": row[0],
-                "nc": row[1],
-                "ffeed": as_float(row[10]),
-                "tstep": as_float(row[15]),
-                **comp,
-            }
-            comp_points.append(point)
-            lines.append(
-                f"- {row[0]} nc={row[1]} Ffeed={row[10]} tstep={row[15]} "
-                f"CE_acid={comp['ce_acid']} CE_water={comp['ce_water']} CE_meoh={comp['ce_meoh']} "
-                f"CR_acid={comp['cr_acid']} CR_water={comp['cr_water']} CR_meoh={comp['cr_meoh']} source={comp['source']}"
-            )
-    if not comp_points:
-        lines.append("- none")
-    else:
-        lines.append("Flow/composition trend hints:")
-        slope_ffeed_ce_acid = linear_slope(
-            [as_float(item.get("ffeed")) for item in comp_points],
-            [as_float(item.get("ce_acid")) for item in comp_points],
-        )
-        slope_tstep_ce_acid = linear_slope(
-            [as_float(item.get("tstep")) for item in comp_points],
-            [as_float(item.get("ce_acid")) for item in comp_points],
-        )
-        if slope_ffeed_ce_acid is not None:
-            direction = "increases" if slope_ffeed_ce_acid > 0 else "decreases"
-            lines.append(f"- As Ffeed rises, CE_acid generally {direction} (slope={slope_ffeed_ce_acid:.6g}).")
-        if slope_tstep_ce_acid is not None:
-            direction = "increases" if slope_tstep_ce_acid > 0 else "decreases"
-            lines.append(f"- As tstep rises, CE_acid generally {direction} (slope={slope_tstep_ce_acid:.6g}).")
-
-        by_nc: Dict[str, Dict[str, float]] = {}
-        for item in comp_points:
-            nc_label = str(item.get("nc", ""))
-            bucket = by_nc.setdefault(nc_label, {"n": 0.0, "ce_acid_sum": 0.0, "cr_acid_sum": 0.0})
-            ce_acid = as_float(item.get("ce_acid"))
-            cr_acid = as_float(item.get("cr_acid"))
-            if ce_acid is None or cr_acid is None:
-                continue
-            bucket["n"] += 1.0
-            bucket["ce_acid_sum"] += ce_acid
-            bucket["cr_acid_sum"] += cr_acid
-        if by_nc:
-            lines.append("NC-level composition means (recent rows):")
-            ranked_nc = sorted(
-                by_nc.items(),
-                key=lambda kv: (kv[1]["ce_acid_sum"] / kv[1]["n"]) if kv[1]["n"] > 0 else float("-inf"),
-                reverse=True,
-            )
-            for nc_label, bucket in ranked_nc[:6]:
-                if bucket["n"] <= 0:
+    # Skip expensive composition metrics when optimize_context is True
+    if not optimize_context:
+        lines.append("Recent composition snapshots (outlet CE/CR):")
+        comp_points: List[Dict[str, object]] = []
+        if recent_rows:
+            for row in recent_rows:
+                comp = composition_metrics_from_raw_json(str(row[16] or ""))
+                if not comp:
                     continue
-                ce_mean = bucket["ce_acid_sum"] / bucket["n"]
-                cr_mean = bucket["cr_acid_sum"] / bucket["n"]
-                lines.append(f"- nc={nc_label} mean_CE_acid={ce_mean:.6g} mean_CR_acid={cr_mean:.6g} n={int(bucket['n'])}")
+                point = {
+                    "run_name": row[0],
+                    "nc": row[1],
+                    "ffeed": as_float(row[10]),
+                    "tstep": as_float(row[15]),
+                    **comp,
+                }
+                comp_points.append(point)
+                lines.append(
+                    f"- {row[0]} nc={row[1]} Ffeed={row[10]} tstep={row[15]} "
+                    f"CE_acid={comp['ce_acid']} CE_water={comp['ce_water']} CE_meoh={comp['ce_meoh']} "
+                    f"CR_acid={comp['cr_acid']} CR_water={comp['cr_water']} CR_meoh={comp['cr_meoh']} source={comp['source']}"
+                )
+        if not comp_points:
+            lines.append("- none")
+        else:
+            lines.append("Flow/composition trend hints:")
+            slope_ffeed_ce_acid = linear_slope(
+                [as_float(item.get("ffeed")) for item in comp_points],
+                [as_float(item.get("ce_acid")) for item in comp_points],
+            )
+            slope_tstep_ce_acid = linear_slope(
+                [as_float(item.get("tstep")) for item in comp_points],
+                [as_float(item.get("ce_acid")) for item in comp_points],
+            )
+            if slope_ffeed_ce_acid is not None:
+                direction = "increases" if slope_ffeed_ce_acid > 0 else "decreases"
+                lines.append(f"- As Ffeed rises, CE_acid generally {direction} (slope={slope_ffeed_ce_acid:.6g}).")
+            if slope_tstep_ce_acid is not None:
+                direction = "increases" if slope_tstep_ce_acid > 0 else "decreases"
+                lines.append(f"- As tstep rises, CE_acid generally {direction} (slope={slope_tstep_ce_acid:.6g}).")
+
+            by_nc: Dict[str, Dict[str, float]] = {}
+            for item in comp_points:
+                nc_label = str(item.get("nc", ""))
+                bucket = by_nc.setdefault(nc_label, {"n": 0.0, "ce_acid_sum": 0.0, "cr_acid_sum": 0.0})
+                ce_acid = as_float(item.get("ce_acid"))
+                cr_acid = as_float(item.get("cr_acid"))
+                if ce_acid is None or cr_acid is None:
+                    continue
+                bucket["n"] += 1.0
+                bucket["ce_acid_sum"] += ce_acid
+                bucket["cr_acid_sum"] += cr_acid
+            if by_nc:
+                lines.append("NC-level composition means (recent rows):")
+                ranked_nc = sorted(
+                    by_nc.items(),
+                    key=lambda kv: (kv[1]["ce_acid_sum"] / kv[1]["n"]) if kv[1]["n"] > 0 else float("-inf"),
+                    reverse=True,
+                )
+                for nc_label, bucket in ranked_nc[:6]:
+                    if bucket["n"] <= 0:
+                        continue
+                    ce_mean = bucket["ce_acid_sum"] / bucket["n"]
+                    cr_mean = bucket["cr_acid_sum"] / bucket["n"]
+                    lines.append(f"- nc={nc_label} mean_CE_acid={ce_mean:.6g} mean_CR_acid={cr_mean:.6g} n={int(bucket['n'])}")
 
     return "\n".join(lines)
 
