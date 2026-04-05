@@ -118,11 +118,11 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         "--constr-viol-tol",
         "1e-1",  # Relaxed from 1e-4: allow 10% constraint violation
         "--acceptable-constr-viol-tol",
-        "1.0",  # Very relaxed: allow 100% constraint violation for Phase 2
+        "0.1",  # Allow 10% constraint violation for Phase 2 screening
         "--dual-inf-tol",
         "1e-2",  # Relaxed from 1e-4: allow 1% dual infeasibility
         "--acceptable-dual-inf-tol",
-        "1.0",  # Very relaxed: allow large dual infeasibility
+        "0.1",  # Allow 10% dual infeasibility for Phase 2 screening
         "--nfex",
         str(nfex),
         "--nfet",

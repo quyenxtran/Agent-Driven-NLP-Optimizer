@@ -72,7 +72,12 @@
       "Bash([[ -f frontier_results/interaction_test_without/reports/hybrid_gatv2_svm_loao_per_acid_nested_tuned.csv ]])",
       "Bash(python scripts/compare_interaction_features_impact.py)",
       "Bash(tee FINAL_COMPARISON_RESULTS.txt)",
-      "Bash(git commit -m 'Add final experiment summary and comparison results:*)"
+      "Bash(git commit -m 'Add final experiment summary and comparison results:*)",
+      "Bash(ls -1 frontier_results/interaction_test_*/reports/svm_loao_per_acid_nested_tuned.csv)",
+      "Bash(ls -1 frontier_results/interaction_test_*/reports/hybrid_gnn_svm_loao_per_acid_nested_tuned.csv)",
+      "Bash(ls -1 frontier_results/interaction_test_*/reports/hybrid_gatv2_svm_loao_per_acid.csv)",
+      "Bash(git commit -m 'Add experiment closure report - conclusive results despite job timeout:*)",
+      "Bash(rm -f /storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/.git/index.lock)"
     ]
   }
 }
