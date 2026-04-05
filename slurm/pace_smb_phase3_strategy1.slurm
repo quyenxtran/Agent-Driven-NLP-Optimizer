@@ -1,9 +1,9 @@
 #!/bin/bash
-# Phase 2B: Optimization with LHS-Sampled Seeds
-# Uses Latin Hypercube Sampling to generate diverse seed points
-# across the 5-D flow space for each NC (instead of fixed reference seeds)
+# Phase 3 Strategy 1: Regular LHS
+# Baseline: Screen all → select top 5 distinct → optimize
+# Expected: Lowest best J (baseline for comparison)
 
-#SBATCH --job-name=smb-phase2b-lhs
+#SBATCH --job-name=smb-phase3-s1
 #SBATCH -A gts-sn73
 #SBATCH --qos=inferno
 #SBATCH -p cpu-container
@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -25,7 +25,7 @@ cd "$REPO_ROOT"
 
 source .venv/bin/activate
 
-# IPOPT/MA97 Setup (CPU multi-threaded)
+# IPOPT/MA97 Setup
 export IPOPT_STACK_ROOT="${IPOPT_STACK_ROOT:-/storage/scratch1/4/qtran47/opt/ipopt-hsl-stack}"
 export IPOPT_BIN_DIR="${IPOPT_BIN_DIR:-$IPOPT_STACK_ROOT/bin}"
 export IPOPT_LIB_DIR="${IPOPT_LIB_DIR:-$IPOPT_STACK_ROOT/lib}"
@@ -35,7 +35,6 @@ export PATH="$IPOPT_BIN_DIR:${REPO_ROOT}/.venv/bin:${PATH}"
 export LD_LIBRARY_PATH="$IPOPT_LIB_DIR:$OPENBLAS_LIBDIR:$METIS_LIBDIR:${LD_LIBRARY_PATH:-}"
 export SMB_HSL_LIB="$IPOPT_LIB_DIR/libcoinhsl.so"
 
-# OpenMP multi-threading for MA97
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-8}}"
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=spread
@@ -44,73 +43,43 @@ export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
-
-# Disable reference gate: LHS seeds already provide search space coverage
-# No need for extra baseline runs, just optimize from each LHS seed
 export SMB_REFERENCE_GATE=0
 
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/logs}"
-ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase2b_lhs_seeding}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase3_strategy1}"
 mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "PHASE 2B: LHS-SEEDED OPTIMIZATION (Better Phase 2 with Space Coverage)"
+echo "PHASE 3 STRATEGY 1: Regular LHS (Baseline)"
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "Job: ${SLURM_JOB_ID:-local}"
-echo "CPUs: ${SLURM_CPUS_PER_TASK:-8} (MA97 multi-threaded)"
-echo "Memory: 32G"
-echo "Time: 60 minutes"
 echo ""
-echo "Improvement over Phase 2:"
-echo "  Phase 2: Fixed reference seeds (NOTEBOOK_SEEDS)"
-echo "  Phase 2B: LHS-sampled seeds → better space coverage"
+echo "Approach:"
+echo "  1. Load Phase 2B screening data (~300-350 feasible seeds)"
+echo "  2. Rank all NCs by screening productivity"
+echo "  3. Select top 5 DISTINCT NCs"
+echo "  4. Optimize each with HIGH fidelity (nfex=10, nfet=5, ncp=2)"
+echo "  5. Return best J"
 echo ""
-echo "Two-Stage Approach per NC (100 seeds for proper 5D coverage):"
-echo "  Stage 1 - Screening (fast, all 100 seeds):"
-echo "    • Generate 100 LHS seeds across 5-D flow space"
-echo "    • Bounds: tstep[8-12], ffeed[0.5-2.5], fdes[0.5-2.5], fex[0.5-2.5], f1[0.5-5.0]"
-echo "    • Quick evaluation at each seed (low fidelity)"
-echo "    • Filter: keep only feasible seeds (purity≥0.20, recovery≥0.20)"
-echo "    • Expected: ~20-30 feasible seeds per NC"
-echo ""
-echo "  Stage 2 - Optimization (expensive, only feasible seeds):"
-echo "    • Run full IPOPT optimization on ~20-30 feasible seeds"
-echo "    • Skip wasting time on infeasible regions of 5D space"
-echo "    • Keep best result per NC"
-echo ""
-echo "Expected:"
-echo "  • Much better 5D space coverage (100 seeds vs 8)"
-echo "  • ~70% runtime reduction (optimize 20-30 instead of 100)"
-echo "  • Better data quality (only feasible points optimized)"
-echo "  • Time: ~20-25 minutes"
+echo "Purpose: Baseline (no intelligence) for comparison"
 echo ""
 
-echo "Running Phase 2B with LHS seeding (100 seeds per NC for 5D coverage)..."
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2b_lhs_seeding \
-  --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
-         "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
-  --n-seeds 100 \
-  --artifact-dir "$ARTIFACT_DIR" \
-  --solver-name "auto" \
-  --linear-solver "ma97" \
-  --verbose
+echo "Running Phase 3 Strategy 1..."
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase3_strategy1_regular_lhs \
+  --phase2-dir "$REPO_ROOT/artifacts/phase2_lhs_seeding" \
+  --artifact-dir "$ARTIFACT_DIR"
 
 EXIT_CODE=$?
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════════════"
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ PHASE 2B LHS-SEEDED OPTIMIZATION COMPLETED SUCCESSFULLY"
+    echo "✅ PHASE 3 STRATEGY 1 COMPLETED"
 else
-    echo "❌ PHASE 2B FAILED (exit code: $EXIT_CODE)"
+    echo "❌ PHASE 3 STRATEGY 1 FAILED (exit code: $EXIT_CODE)"
 fi
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo ""
-echo "Results:"
-echo "  Artifacts: $ARTIFACT_DIR"
-echo "  Summary: $ARTIFACT_DIR/phase2b_summary.json"
-echo ""
-echo "Next: Use Phase 2B results to train BO surrogates"
+echo "Result: $ARTIFACT_DIR/strategy1_result.json"
 echo ""
 
 exit $EXIT_CODE

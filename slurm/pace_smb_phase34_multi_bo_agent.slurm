@@ -1,17 +1,16 @@
 #!/bin/bash
-# Phase 2B: Optimization with LHS-Sampled Seeds
-# Uses Latin Hypercube Sampling to generate diverse seed points
-# across the 5-D flow space for each NC (instead of fixed reference seeds)
+# Phase 3-4: Multi-BO Agent Orchestration
+# After Phase 1 baseline + Phase 2B LHS seeding, train BO surrogates and run agent-guided exploration
 
-#SBATCH --job-name=smb-phase2b-lhs
+#SBATCH --job-name=smb-phase34-multiBO
 #SBATCH -A gts-sn73
 #SBATCH --qos=inferno
 #SBATCH -p cpu-container
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -45,72 +44,81 @@ export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
 
-# Disable reference gate: LHS seeds already provide search space coverage
-# No need for extra baseline runs, just optimize from each LHS seed
+# Disable reference gate: Agent uses BO predictions for warm-start
+# No need for extra baseline runs, evaluate agent's selected configs directly
 export SMB_REFERENCE_GATE=0
 
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/logs}"
-ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase2b_lhs_seeding}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase34_multi_bo_agent}"
 mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "PHASE 2B: LHS-SEEDED OPTIMIZATION (Better Phase 2 with Space Coverage)"
+echo "PHASE 3-4: MULTI-BO AGENT ORCHESTRATION"
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo "Job: ${SLURM_JOB_ID:-local}"
 echo "CPUs: ${SLURM_CPUS_PER_TASK:-8} (MA97 multi-threaded)"
-echo "Memory: 32G"
-echo "Time: 60 minutes"
+echo "Memory: 64G"
+echo "Time: 12 hours"
 echo ""
-echo "Improvement over Phase 2:"
-echo "  Phase 2: Fixed reference seeds (NOTEBOOK_SEEDS)"
-echo "  Phase 2B: LHS-sampled seeds → better space coverage"
+echo "Purpose: Train BO surrogates (GP, DNN, PINN) on Phase 1+2B data"
+echo "         Then run agent-guided exploration with intelligent prioritization"
 echo ""
-echo "Two-Stage Approach per NC (100 seeds for proper 5D coverage):"
-echo "  Stage 1 - Screening (fast, all 100 seeds):"
-echo "    • Generate 100 LHS seeds across 5-D flow space"
-echo "    • Bounds: tstep[8-12], ffeed[0.5-2.5], fdes[0.5-2.5], fex[0.5-2.5], f1[0.5-5.0]"
-echo "    • Quick evaluation at each seed (low fidelity)"
-echo "    • Filter: keep only feasible seeds (purity≥0.20, recovery≥0.20)"
-echo "    • Expected: ~20-30 feasible seeds per NC"
+echo "Progressive Tool Availability:"
+echo "  ✓ GP: Available from start (needs ≥1 point)"
+echo "  ⏳ DNN: Available after ≥100 points (Phase 1 + Phase 2B start)"
+echo "  ⏳ PINN: Available after ≥150 points (Phase 2B expansion)"
 echo ""
-echo "  Stage 2 - Optimization (expensive, only feasible seeds):"
-echo "    • Run full IPOPT optimization on ~20-30 feasible seeds"
-echo "    • Skip wasting time on infeasible regions of 5D space"
-echo "    • Keep best result per NC"
+echo "Expected Data Accumulation:"
+echo "  Phase 1: 31 baseline points"
+echo "  Phase 2B: ~80 optimized points"
+echo "  Total: ~111 points → GP + DNN ready immediately"
+echo "  After some Phase 34 exploration: ~150+ → PINN ready"
 echo ""
-echo "Expected:"
-echo "  • Much better 5D space coverage (100 seeds vs 8)"
-echo "  • ~70% runtime reduction (optimize 20-30 instead of 100)"
-echo "  • Better data quality (only feasible points optimized)"
-echo "  • Time: ~20-25 minutes"
+echo "Agent Decision Strategies:"
+echo "  • Consensus (>67% agreement) → Exploit best prediction"
+echo "  • Disagreement (all different) → Explore gap (high information value)"
+echo "  • Trade-off (moderate) → Risk-adjusted based on remaining budget"
+echo ""
+echo "Constraint Strategy:"
+echo "  Phase 3-4 uses LOOSE constraints for BO development:"
+echo "    - Purity ≥ 0.20 (vs strict 0.70)"
+echo "    - Recovery ≥ 0.20 (vs strict 0.90)"
+echo "    - Allows broad exploration of design space"
+echo ""
+echo "Next: After Phase 3-4, use Phase 5 for final validation with STRICT constraints"
 echo ""
 
-echo "Running Phase 2B with LHS seeding (100 seeds per NC for 5D coverage)..."
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2b_lhs_seeding \
-  --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
-         "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
-  --n-seeds 100 \
+echo "Running Phase 3-4 Multi-BO Agent Orchestration..."
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase34_multi_bo_agent \
+  --max-iterations 50 \
   --artifact-dir "$ARTIFACT_DIR" \
-  --solver-name "auto" \
-  --linear-solver "ma97" \
-  --verbose
+  --phase1-dir "$REPO_ROOT/artifacts/phase1_lhs_only" \
+  --phase2b-dir "$REPO_ROOT/artifacts/phase2b_lhs_seeding" \
+  --risk-tolerance 0.5
 
 EXIT_CODE=$?
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════════════"
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ PHASE 2B LHS-SEEDED OPTIMIZATION COMPLETED SUCCESSFULLY"
+    echo "✅ PHASE 3-4 MULTI-BO AGENT ORCHESTRATION COMPLETED SUCCESSFULLY"
 else
-    echo "❌ PHASE 2B FAILED (exit code: $EXIT_CODE)"
+    echo "❌ PHASE 3-4 FAILED (exit code: $EXIT_CODE)"
 fi
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo ""
 echo "Results:"
 echo "  Artifacts: $ARTIFACT_DIR"
-echo "  Summary: $ARTIFACT_DIR/phase2b_summary.json"
+echo "  Summary: $ARTIFACT_DIR/phase34_summary.json"
+echo "  Training data: $ARTIFACT_DIR/phase3_training_data.json"
 echo ""
-echo "Next: Use Phase 2B results to train BO surrogates"
+echo "Pipeline Progress:"
+echo "  Phase 1: ✅ Complete (baseline evaluation)"
+echo "  Phase 2B: ✅ Complete (LHS-seeded optimization)"
+echo "  Phase 3-4: ✅ Complete (multi-BO agent exploration)"
+echo "  Phase 5: ⏳ Ready (final validation with strict constraints)"
+echo ""
+echo "Next: Run Phase 5 to validate best candidates with STRICT production constraints"
 echo ""
 
 exit $EXIT_CODE

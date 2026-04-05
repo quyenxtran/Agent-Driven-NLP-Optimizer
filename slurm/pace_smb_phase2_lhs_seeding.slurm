@@ -1,9 +1,9 @@
 #!/bin/bash
-# Phase 2B: Optimization with LHS-Sampled Seeds
+# Phase 2: Optimization with LHS-Sampled Seeds
 # Uses Latin Hypercube Sampling to generate diverse seed points
 # across the 5-D flow space for each NC (instead of fixed reference seeds)
 
-#SBATCH --job-name=smb-phase2b-lhs
+#SBATCH --job-name=smb-phase2-lhs
 #SBATCH -A gts-sn73
 #SBATCH --qos=inferno
 #SBATCH -p cpu-container
@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=08:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -50,48 +50,49 @@ export PYTHONUNBUFFERED=1
 export SMB_REFERENCE_GATE=0
 
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/logs}"
-ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase2b_lhs_seeding}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase2_lhs_seeding}"
 mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "PHASE 2B: LHS-SEEDED OPTIMIZATION (Better Phase 2 with Space Coverage)"
+echo "PHASE 2: LHS-SEEDED OPTIMIZATION (Foundation Data Generation)"
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo "Job: ${SLURM_JOB_ID:-local}"
 echo "CPUs: ${SLURM_CPUS_PER_TASK:-8} (MA97 multi-threaded)"
 echo "Memory: 32G"
-echo "Time: 60 minutes"
+echo "Time: 180 minutes"
 echo ""
-echo "Improvement over Phase 2:"
-echo "  Phase 2: Fixed reference seeds (NOTEBOOK_SEEDS)"
-echo "  Phase 2B: LHS-sampled seeds → better space coverage"
+echo "Purpose: Generate comprehensive screening data for Phase 3 strategy comparison"
 echo ""
-echo "Two-Stage Approach per NC (100 seeds for proper 5D coverage):"
-echo "  Stage 1 - Screening (fast, all 100 seeds):"
+echo "Low-Fidelity Optimization per NC (100 seeds for proper 5D coverage):"
+echo "  Process:"
 echo "    • Generate 100 LHS seeds across 5-D flow space"
 echo "    • Bounds: tstep[8-12], ffeed[0.5-2.5], fdes[0.5-2.5], fex[0.5-2.5], f1[0.5-5.0]"
-echo "    • Quick evaluation at each seed (low fidelity)"
-echo "    • Filter: keep only feasible seeds (purity≥0.20, recovery≥0.20)"
-echo "    • Expected: ~20-30 feasible seeds per NC"
-echo ""
-echo "  Stage 2 - Optimization (expensive, only feasible seeds):"
-echo "    • Run full IPOPT optimization on ~20-30 feasible seeds"
-echo "    • Skip wasting time on infeasible regions of 5D space"
+echo "    • Run low-fidelity optimization on each seed (nfex=4, nfet=2, ncp=1)"
+echo "    • Constraints: purity≥0.15, recovery≥0.15 (relaxed for better coverage)"
+echo "    • Keep all valid results for Phase 3"
 echo "    • Keep best result per NC"
 echo ""
-echo "Expected:"
-echo "  • Much better 5D space coverage (100 seeds vs 8)"
-echo "  • ~70% runtime reduction (optimize 20-30 instead of 100)"
-echo "  • Better data quality (only feasible points optimized)"
-echo "  • Time: ~20-25 minutes"
+echo "Expected Output:"
+echo "  • ~31 NCs × 100 seeds optimizations at low fidelity"
+echo "  • Expected ~20-40% success rate = 600-1240 valid points"
+echo "  • Serves as foundation for all Phase 3 strategies"
+echo "  • Better 5D space coverage (100 seeds per NC)"
+echo "  • Estimated runtime: 4-6 hours (100 opt/NC × 31 NCs × ~90s each)"
 echo ""
 
-echo "Running Phase 2B with LHS seeding (100 seeds per NC for 5D coverage)..."
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2b_lhs_seeding \
+echo "Running Phase 2 with LHS seeding (100 seeds per NC for 5D coverage)..."
+echo "Using DIRECT optimization (no subprocess overhead)"
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_lhs_seeding_direct \
   --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
          "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
+         "[1,1,1,5]" "[1,1,5,1]" "[1,5,1,1]" "[5,1,1,1]" "[1,2,2,3]" \
+         "[1,2,3,2]" "[1,3,2,1]" "[2,1,1,4]" "[2,1,3,2]" "[2,1,4,1]" \
+         "[2,2,3,1]" "[2,3,1,2]" "[2,3,2,1]" "[3,1,1,3]" "[3,1,2,2]" \
+         "[3,1,3,1]" "[3,2,1,2]" "[3,2,2,1]" "[3,3,1,1]" "[4,1,1,2]" \
+         "[4,1,2,1]" "[4,2,1,1]" \
   --n-seeds 100 \
   --artifact-dir "$ARTIFACT_DIR" \
-  --solver-name "auto" \
+  --solver-name "ipopt" \
   --linear-solver "ma97" \
   --verbose
 
@@ -100,17 +101,17 @@ EXIT_CODE=$?
 echo ""
 echo "═══════════════════════════════════════════════════════════════════════════"
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ PHASE 2B LHS-SEEDED OPTIMIZATION COMPLETED SUCCESSFULLY"
+    echo "✅ PHASE 2 LHS-SEEDED OPTIMIZATION COMPLETED SUCCESSFULLY"
 else
-    echo "❌ PHASE 2B FAILED (exit code: $EXIT_CODE)"
+    echo "❌ PHASE 2 FAILED (exit code: $EXIT_CODE)"
 fi
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo ""
 echo "Results:"
 echo "  Artifacts: $ARTIFACT_DIR"
-echo "  Summary: $ARTIFACT_DIR/phase2b_summary.json"
+echo "  Summary: $ARTIFACT_DIR/phase2_summary.json"
 echo ""
-echo "Next: Use Phase 2B results to train BO surrogates"
+echo "Next: Use Phase 2 results for Phase 3 strategy comparison"
 echo ""
 
 exit $EXIT_CODE
