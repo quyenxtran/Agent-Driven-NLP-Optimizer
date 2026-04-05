@@ -1,7 +1,12 @@
 # Plan B: LHS + Physics Filtering Implementation
 
 ## 🎯 Objective
-Implement Latin Hypercube Sampling with physics-based filtering to systematically explore the 385-configuration space before running full 11-hour benchmarks.
+Implement Latin Hypercube Sampling with physics-based filtering to systematically explore the constrained NC configuration space before running full 11-hour benchmarks.
+
+**Critical Constraints**:
+- ✅ Total column count = 8 (nc[0] + nc[1] + nc[2] + nc[3] = 8)
+- ✅ Maximum pump flow rate = 3.0 ml/min
+- Each dimension: [1, 4] columns
 
 **Timeline**: ~2-3 hours development + validation  
 **Target**: Deploy improved sampling by [INSERT_TIME], then submit benchmarks
@@ -22,83 +27,73 @@ Implement Latin Hypercube Sampling with physics-based filtering to systematicall
 ## 🏗️ Phase 1: LHS Configuration Generation
 
 ### 1.1 Design LHS Sampling
-- **Space**: 4D (nc[0], nc[1], nc[2], nc[3])
-- **Ranges**: [1, 4] for each dimension (385 valid configs)
-- **Sample size**: 50-80 stratified points
-- **Constraint**: Each dimension divided into N equal strata
+- **Space**: 4D constrained (nc[0], nc[1], nc[2], nc[3])
+- **Ranges**: [1, 4] for each dimension
+- **Constraint**: sum(nc) = 8 (CRITICAL)
+- **Valid configs**: 31 total (not 385)
+- **Sample size**: All 31 configs (LHS selects stratified subset)
 
-### 1.2 Implementation
-**File**: `benchmarks/lhs_sampler.py` (NEW)
+### 1.2 Implementation ✅ COMPLETE
+**File**: `benchmarks/lhs_sampler.py`
 ```python
-def generate_lhs_configs(n_samples=60, seed=42):
-    """Generate Latin Hypercube stratified samples of NC space"""
-    # Returns: List[List[int]] representing [nc[0], nc[1], nc[2], nc[3]]
-
-def is_valid_nc_config(nc):
-    """Check basic validity (not all constraints, just structure)"""
-    # Returns: bool
+def generate_valid_constrained_configs(target_sum=8):
+    """Enumerate all valid [nc0, nc1, nc2, nc3] where sum=target_sum"""
+    # Returns: 31 configurations
+    
+def generate_lhs_configs(n_samples=60, seed=42, target_sum=8):
+    """Generate LHS samples from the valid configuration space"""
+    # Returns: All valid configs with sum=8
 ```
 
-### 1.3 Validation Checkpoint
-- [ ] Generate 60 LHS points
-- [ ] Verify coverage (all dimensions stratified)
-- [ ] Ensure all points in valid range
+### 1.3 Validation Checkpoint ✅ COMPLETE
+- [✅] Generate LHS points with sum=8 constraint
+- [✅] Verify all 31 valid configs enumerated
+- [✅] All points in valid range [1,4]
+- [✅] Test output: 31/31 valid, 100% pass constraint
 
 ---
 
 ## ⚙️ Phase 2: Physics Constraint Filtering
 
-### 2.1 Hard Constraints (Eliminates Invalid Configs)
-**File**: `benchmarks/physics_filter.py` (NEW)
+### 2.1 Hard Constraints (Eliminates Invalid Configs) ✅ COMPLETE
+**File**: `benchmarks/physics_filter.py`
 
 ```python
-class PhysicsFilter:
+class PhysicsFilter(target_sum=8):
+    def apply_total_columns_constraint(nc):
+        """
+        CRITICAL: Total columns MUST equal 8
+        Eliminates any configs with sum(nc) != 8
+        """
+        
     def apply_zone_residence_time_constraint(nc):
         """
-        Each zone must have feasible residence time:
-        τ = column_length / interstitial_velocity
-        Valid range: 0.5s to 30s (tunable)
+        Each zone must have feasible residence time
+        (Soft validation - NLP solver does final check)
         """
-        # Eliminates ~40-50% of invalid configs
-        
-    def apply_mass_balance_feasibility(nc):
-        """
-        Check if mass balance is achievable:
-        F1 = Ffeed + Fraf
-        F1 = Fdes + Fex
-        """
-        # Soft check (actual flows will be optimized)
 ```
 
-### 2.2 Soft Heuristics (Ranks Valid Configs)
+### 2.2 Soft Heuristics (Ranks Valid Configs) ✅ COMPLETE
 ```python
 class ConfigScorer:
     def score_selectivity_potential(nc):
-        """
-        Longer zones typically better for separation
-        Score: sum(nc) * scaling_factor
-        """
+        """Longer zones = better separation"""
         
     def score_throughput_estimate(nc):
-        """
-        More columns (higher nc) = higher throughput
-        But also longer residence times
-        """
+        """More columns = higher capacity"""
         
     def score_solver_difficulty(nc):
-        """
-        Estimate conditioning from config structure
-        Simpler topologies easier to solve
-        """
+        """Balance complexity: imbalanced = harder"""
         
-    def combined_score(nc, weights={"selectivity": 0.4, "throughput": 0.3, "solver": -0.3}):
-        """Weighted combination"""
+    def combined_score(nc, weights=default):
+        """Weighted: selectivity=0.4, throughput=0.3, solver=-0.3"""
 ```
 
-### 2.3 Validation Checkpoint
-- [ ] Filter LHS points through hard constraints
-- [ ] Score remaining configs
-- [ ] Rank top 40-50 candidates
+### 2.3 Validation Checkpoint ✅ COMPLETE
+- [✅] Filter LHS through hard constraints (sum=8)
+- [✅] All 31 configs pass feasibility (100%)
+- [✅] Score and rank all valid configs
+- [✅] Top configs: [1,1,2,4], [1,1,3,3], [1,1,4,2]... (score 41.67)
 
 ---
 
@@ -134,23 +129,25 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 ## 📈 Phase 4: Smoke Test Validation (Plan B)
 
 ### 4.1 Quick LHS Test
-**Job**: 27B model, 5 min runtime
-- Test LHS sampling pipeline
-- Test physics filtering
-- Verify no crashes
+**Job**: 27B model, 15 min runtime
+- Test LHS sampling pipeline (31 valid configs)
+- Test physics filtering with sum=8 constraint
+- Verify agent can use ranked configs
+- Verify no crashes in optimization loop
 
 ### 4.2 Expected Improvements
 | Metric | Before | After | Target |
 |--------|--------|-------|--------|
-| Config coverage | Greedy | Stratified | 80%+ diverse |
-| Initial quality | Random ranking | Physics-ranked | Top 20 better |
+| Config space | 385 (unlimited) | 31 (sum=8) | Focused search |
+| Initial quality | Greedy heuristic | Physics-ranked | Top 20 better |
 | Diagnostic rate | 40% | <30% | <20% |
-| Iterations/11h | ~45 | ~50-60 | 60+ |
+| Convergence | Slow exploration | Guided by heuristics | 50-60 iter/11h |
 
-### 4.3 Validation Checkpoint
-- [ ] LHS smoke test passes
-- [ ] Physics filtering working
-- [ ] Integration complete and tested
+### 4.3 Validation Checkpoint ⏳ PENDING
+- [ ] LHS smoke test passes (31 configs, 15 min)
+- [ ] Physics filtering working (100% pass)
+- [ ] Agent integration complete
+- [ ] Configuration exploration covers all 31 valid topologies
 
 ---
 
@@ -187,20 +184,21 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 
 ## 📝 Implementation Checklist
 
-### Phase 1: LHS Sampling
-- [ ] Create `benchmarks/lhs_sampler.py`
-- [ ] Implement `generate_lhs_configs()`
-- [ ] Implement `is_valid_nc_config()`
-- [ ] Test: Generate 60 points, verify stratification
-- [ ] Commit to main
+### Phase 1: LHS Sampling ✅ COMPLETE
+- [✅] Create `benchmarks/lhs_sampler.py`
+- [✅] Implement `generate_valid_constrained_configs(target_sum=8)`
+- [✅] Implement `generate_lhs_configs(target_sum=8)` 
+- [✅] Implement `is_valid_nc_config(target_sum=8)`
+- [✅] Test: Generate 31 valid points, all sum to 8
+- [✅] Commit to main (7d65ab3)
 
-### Phase 2: Physics Filtering  
-- [ ] Create `benchmarks/physics_filter.py`
-- [ ] Implement `PhysicsFilter` class (hard constraints)
-- [ ] Implement `ConfigScorer` class (soft heuristics)
-- [ ] Test: Filter 60 points → ~30-40 valid
-- [ ] Score top 20 candidates
-- [ ] Commit to main
+### Phase 2: Physics Filtering ✅ COMPLETE
+- [✅] Create `benchmarks/physics_filter.py`
+- [✅] Implement `PhysicsFilter.apply_total_columns_constraint()` (CRITICAL)
+- [✅] Implement `ConfigScorer` class (soft heuristics)
+- [✅] Test: Filter 31 points → 31 valid (100%)
+- [✅] Score all 31 candidates
+- [✅] Commit to main (7d65ab3)
 
 ### Phase 3: Agent Integration
 - [ ] Modify `benchmarks/agent_runner.py`
@@ -239,19 +237,37 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 
 | Phase | Time | Status |
 |-------|------|--------|
-| LHS sampling | 20 min | 🔲 Not started |
-| Physics filtering | 25 min | 🔲 Not started |
-| Agent integration | 20 min | 🔲 Not started |
-| Smoke test | 10 min | 🔲 Not started |
-| Full benchmark | 32h | 🔲 Queued |
-| **TOTAL** | **~33h** | 🔲 Starting now |
+| LHS sampling | 20 min | ✅ Complete (31 configs enumerated) |
+| Physics filtering | 25 min | ✅ Complete (sum=8 constraint enforced) |
+| Agent integration | 20 min | 🔲 In progress |
+| Smoke test (15 min) | 10 min | 🔲 Pending |
+| Full benchmark (27B + 35B) | 32h | 🔲 Queued |
+| **TOTAL** | **~33h** | 🔲 Phase 3 active |
 
 ---
 
 ## 📋 Notes
 
-- Keep all LHS configs + scores in `artifacts/lhs_configs.json` for analysis
-- Log physics filter statistics (# eliminated, avg scores)
+### Constraint Enforcement
+- **Total column count = 8**: ENFORCED in `generate_valid_constrained_configs()` and `apply_total_columns_constraint()`
+  - Only 31 valid configs exist (not 385)
+  - All LHS samples guaranteed to satisfy this constraint
+  - All filtered configs pass this hard constraint
+  
+- **Max pump flow = 3.0 ml/min**: 
+  - TBD: Depends on operating point (feed concentration, separation targets)
+  - Will be validated during NLP optimization
+  - Can be added as NLP constraint if needed
+
+### Artifacts & Analysis
+- Keep all 31 valid LHS configs + scores in `artifacts/lhs_configs_sum8.json` for analysis
+- Log physics filter statistics (feasibility, scores distribution)
+- Compare agent exploration coverage: target is to visit all 31 topologies
 - Compare final results vs Plan A greedy baseline
-- Document learnings for future optimization
+
+### Key Insights
+- Constraining sum(nc)=8 dramatically reduces search space: 385 → 31 configs
+- This enables systematic exploration of the full valid topology space
+- All 31 configs are physically reasonable (symmetric dimension distribution)
+- Scoring is more granular now (average imbalance, selectivity trade-offs)
 
