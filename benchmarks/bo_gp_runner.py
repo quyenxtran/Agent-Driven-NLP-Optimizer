@@ -144,26 +144,31 @@ def run_bo_gp_baseline(
             eval_result = evaluate_candidate(args, config)
             eval_time = time.time() - eval_start
 
-            # Extract objective value (J_validated is the productivity for feasible solutions)
-            objective_value = eval_result.get("J_validated", None)
             status_str = eval_result.get("status", "unknown")
 
+            # Extract metrics: productivity, purity, recovery (from metrics dict)
+            metrics = eval_result.get("metrics", {})
+            productivity = metrics.get("productivity_ex_ga_ma", None)
+            purity = metrics.get("purity_ex_meoh_free", None)
+            recovery_ga = metrics.get("recovery_ex_GA", None)
+            recovery_ma = metrics.get("recovery_ex_MA", None)
+
             if verbose:
-                if objective_value is not None:
-                    print(f"               → Status: {status_str}, Objective: {objective_value:.2f}, Time: {eval_time:.1f}s")
+                if productivity is not None:
+                    print(f"               → Status: {status_str}, J={productivity:.2f}, Pu={purity:.2f}, RecGA={recovery_ga:.2f}, Time: {eval_time:.1f}s")
                 else:
                     print(f"               → Status: {status_str}, Time: {eval_time:.1f}s")
 
         except Exception as e:
             eval_time = time.time() - eval_start
             eval_result = {"status": "error", "error": str(e)}
-            objective_value = None
+            productivity = purity = recovery_ga = recovery_ma = None
             if verbose:
                 print(f"               → Error: {str(e)[:80]}, Time: {eval_time:.1f}s")
 
-        # Use objective value for BO, or penalize if infeasible
-        if objective_value is not None:
-            score = objective_value
+        # Use productivity for BO, or penalize if infeasible
+        if productivity is not None:
+            score = productivity
         else:
             # Penalty for infeasible/error cases
             score = 0.0
@@ -175,9 +180,12 @@ def run_bo_gp_baseline(
         result = {
             "iteration": iteration,
             "config": config,
-            "objective_value": float(objective_value) if objective_value is not None else None,
+            "productivity": float(productivity) if productivity is not None else None,
+            "purity": float(purity) if purity is not None else None,
+            "recovery_ga": float(recovery_ga) if recovery_ga is not None else None,
+            "recovery_ma": float(recovery_ma) if recovery_ma is not None else None,
             "eval_status": eval_result.get("status", "unknown"),
-            "best_objective": float(best_val),
+            "best_productivity": float(best_val),
             "elapsed_seconds": elapsed,
             "n_evaluated": len(selector.evaluated_values),
         }
@@ -193,24 +201,31 @@ def run_bo_gp_baseline(
     total_time = time.time() - start_time
 
     # Find best feasible result
-    feasible_results = [r for r in results if r["objective_value"] is not None]
+    feasible_results = [r for r in results if r["productivity"] is not None]
     if feasible_results:
-        best_result = max(feasible_results, key=lambda r: r["objective_value"])
+        best_result = max(feasible_results, key=lambda r: r["productivity"])
         best_config = best_result["config"]
-        best_objective = best_result["objective_value"]
+        best_productivity = best_result["productivity"]
+        best_purity = best_result["purity"]
+        best_recovery_ga = best_result["recovery_ga"]
     else:
         best_config = None
-        best_objective = None
+        best_productivity = None
+        best_purity = None
+        best_recovery_ga = None
 
     summary = {
         "method": "BO+GP",
         "run_name": run_name,
         "iterations": iteration,
+        "evaluated_iterations": len([r for r in results if r["eval_status"] == "ok"]),
         "feasible_iterations": len(feasible_results),
         "total_time_seconds": total_time,
         "config_space_size": len(config_space),
         "best_config": best_config,
-        "best_objective_value": best_objective,
+        "best_productivity": best_productivity,
+        "best_purity": best_purity,
+        "best_recovery_ga": best_recovery_ga,
         "all_results": results,
     }
 
@@ -222,9 +237,14 @@ def run_bo_gp_baseline(
         print(f"BO+GP Baseline Complete")
         print("=" * 70)
         print(f"Total evaluations: {iteration}")
+        print(f"Evaluated successfully: {len([r for r in results if r['eval_status'] == 'ok'])}")
         print(f"Feasible solutions: {len(feasible_results)}")
         print(f"Best config: {best_config}")
-        print(f"Best objective: {best_objective:.2f}" if best_objective is not None else "No feasible solution")
+        if best_productivity is not None:
+            print(f"Best productivity: {best_productivity:.2f}")
+            print(f"  Purity: {best_purity:.2f}, Recovery_GA: {best_recovery_ga:.2f}")
+        else:
+            print(f"No feasible solutions found")
         print(f"Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
         print(f"Results saved to: {results_path}")
         print()

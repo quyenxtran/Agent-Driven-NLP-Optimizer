@@ -143,20 +143,25 @@ def run_lhs_only_benchmark(
             eval_result = evaluate_candidate(args, config)
             eval_time = time.time() - eval_start
 
-            # Extract objective value (J_validated is the productivity for feasible solutions)
-            objective_value = eval_result.get("J_validated", None)
             status_str = eval_result.get("status", "unknown")
 
+            # Extract metrics: productivity, purity, recovery (from metrics dict)
+            metrics = eval_result.get("metrics", {})
+            productivity = metrics.get("productivity_ex_ga_ma", None)
+            purity = metrics.get("purity_ex_meoh_free", None)
+            recovery_ga = metrics.get("recovery_ex_GA", None)
+            recovery_ma = metrics.get("recovery_ex_MA", None)
+
             if verbose:
-                if objective_value is not None:
-                    print(f"               → Status: {status_str}, Objective: {objective_value:.2f}, Time: {eval_time:.1f}s")
+                if productivity is not None:
+                    print(f"               → Status: {status_str}, J={productivity:.2f}, Pu={purity:.2f}, RecGA={recovery_ga:.2f}, Time: {eval_time:.1f}s")
                 else:
                     print(f"               → Status: {status_str}, Time: {eval_time:.1f}s")
 
         except Exception as e:
             eval_time = time.time() - eval_start
             eval_result = {"status": "error", "error": str(e)}
-            objective_value = None
+            productivity = purity = recovery_ga = recovery_ma = None
             if verbose:
                 print(f"               → Error: {str(e)[:80]}, Time: {eval_time:.1f}s")
 
@@ -167,7 +172,10 @@ def run_lhs_only_benchmark(
             "config": config,
             "physics_score": float(physics_score),
             "physics_status": status,
-            "objective_value": float(objective_value) if objective_value is not None else None,
+            "productivity": float(productivity) if productivity is not None else None,
+            "purity": float(purity) if purity is not None else None,
+            "recovery_ga": float(recovery_ga) if recovery_ga is not None else None,
+            "recovery_ma": float(recovery_ma) if recovery_ma is not None else None,
             "eval_status": eval_result.get("status", "unknown"),
             "imbalance": max(config) - min(config),
             "elapsed_seconds": elapsed,
@@ -180,16 +188,20 @@ def run_lhs_only_benchmark(
 
     total_time = time.time() - start_time
 
-    # Find best result (by objective value if available, else by physics score)
+    # Find best result (by productivity if available)
     best_config = None
-    best_objective = None
+    best_productivity = None
+    best_purity = None
+    best_recovery_ga = None
     best_idx = None
 
-    feasible_results = [r for r in results if r["objective_value"] is not None]
+    feasible_results = [r for r in results if r["productivity"] is not None]
     if feasible_results:
-        best_idx = max(range(len(feasible_results)), key=lambda i: feasible_results[i]["objective_value"])
+        best_idx = max(range(len(feasible_results)), key=lambda i: feasible_results[i]["productivity"])
         best_config = feasible_results[best_idx]["config"]
-        best_objective = feasible_results[best_idx]["objective_value"]
+        best_productivity = feasible_results[best_idx]["productivity"]
+        best_purity = feasible_results[best_idx]["purity"]
+        best_recovery_ga = feasible_results[best_idx]["recovery_ga"]
     elif results:
         best_idx = 0
         best_config = results[0]["config"]
@@ -198,11 +210,14 @@ def run_lhs_only_benchmark(
         "method": "LHS-Only (Physics Ranking)",
         "run_name": run_name,
         "iterations": len(results),
+        "evaluated_iterations": len([r for r in results if r["eval_status"] == "ok"]),
         "feasible_iterations": len(feasible_results),
         "total_time_seconds": total_time,
         "config_space_size": len(config_space),
         "best_config": best_config,
-        "best_objective_value": float(best_objective) if best_objective is not None else None,
+        "best_productivity": float(best_productivity) if best_productivity is not None else None,
+        "best_purity": float(best_purity) if best_purity is not None else None,
+        "best_recovery_ga": float(best_recovery_ga) if best_recovery_ga is not None else None,
         "all_results": results,
     }
 
@@ -215,9 +230,14 @@ def run_lhs_only_benchmark(
         print(f"LHS-Only Benchmark Complete")
         print("=" * 70)
         print(f"Total evaluations: {len(results)}")
+        print(f"Evaluated successfully: {len([r for r in results if r['eval_status'] == 'ok'])}")
         print(f"Feasible solutions: {len(feasible_results)}")
         print(f"Best config: {best_config}")
-        print(f"Best objective: {best_objective:.2f}" if best_objective is not None else "No feasible solution")
+        if best_productivity is not None:
+            print(f"Best productivity: {best_productivity:.2f}")
+            print(f"  Purity: {best_purity:.2f}, Recovery_GA: {best_recovery_ga:.2f}")
+        else:
+            print(f"No feasible solutions found at fixed flows")
         print(f"Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
         print(f"Results saved to: {results_path}")
         print()
