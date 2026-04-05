@@ -115,7 +115,7 @@ def stage1_feasibility_check(
             cwd=str(REPO_ROOT),
             capture_output=True,
             text=True,
-            timeout=60,  # Very fast - just checking feasibility
+            timeout=120,  # Feasibility check (ultra-low fidelity, but still ~60-80s)
         )
 
         if result.returncode == 0:
