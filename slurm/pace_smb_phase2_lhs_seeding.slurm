@@ -94,7 +94,7 @@ echo "Using subprocess with extended timeout (300s per seed optimization)"
   --artifact-dir "$ARTIFACT_DIR" \
   --solver-name "ipopt" \
   --linear-solver "ma97" \
-  --timeout 300 \
+  --timeout 600 \
   --verbose
 
 EXIT_CODE=$?
