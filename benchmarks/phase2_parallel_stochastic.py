@@ -85,6 +85,11 @@ def optimize_seed_worker(args: Tuple) -> Dict:
     nc_library_str = ",".join(str(x) for x in nc)
     run_name = f"phase2_stoch_nc_{nc_str}_seed_{seed_idx}"
 
+    # Build a single-element seed library from the LHS seed values to avoid NOTEBOOK_SEEDS
+    # Format: F1,Fdes,Fex,Ffeed,tstep
+    fraf = seed_dict['fdes'] + seed_dict['fex'] - seed_dict['ffeed']  # Derived from mass balance
+    seed_library_str = f"{seed_dict['f1']:.4f},{seed_dict['fdes']:.4f},{seed_dict['fex']:.4f},{seed_dict['ffeed']:.4f},{seed_dict['tstep']:.4f}"
+
     cmd = [
         sys.executable,
         "-m",
@@ -97,6 +102,9 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         artifact_dir,
         "--nc-library",
         nc_library_str,
+        "--seed-library",
+        seed_library_str,  # Pass single LHS seed instead of NOTEBOOK_SEEDS
+        "--no-reference-gate",  # Disable reference gate for fast foundation data
         "--solver-name",
         "ipopt",
         "--linear-solver",
@@ -113,16 +121,6 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         str(recovery_min),
         "--recovery-ma-min",
         str(recovery_min),
-        "--tstep",
-        f"{seed_dict['tstep']:.4f}",
-        "--ffeed",
-        f"{seed_dict['ffeed']:.4f}",
-        "--fdes",
-        f"{seed_dict['fdes']:.4f}",
-        "--fex",
-        f"{seed_dict['fex']:.4f}",
-        "--f1",
-        f"{seed_dict['f1']:.4f}",
     ]
 
     try:

@@ -76,6 +76,10 @@ def optimize_seed_worker(args: Tuple) -> Dict:
     nc_library_str = ",".join(str(x) for x in nc)
     run_name = f"phase2_parallel_nc_{nc_str}_seed_{seed_idx}"
 
+    # Build a single-element seed library from the LHS seed values to avoid NOTEBOOK_SEEDS
+    # Format: F1,Fdes,Fex,Ffeed,tstep
+    seed_library_str = f"{seed['f1']:.4f},{seed['fdes']:.4f},{seed['fex']:.4f},{seed['ffeed']:.4f},{seed['tstep']:.4f}"
+
     cmd = [
         sys.executable,
         "-m",
@@ -88,6 +92,9 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         artifact_dir,
         "--nc-library",
         nc_library_str,
+        "--seed-library",
+        seed_library_str,  # Pass single LHS seed instead of NOTEBOOK_SEEDS
+        "--no-reference-gate",  # Disable reference gate for fast foundation data
         "--solver-name",
         "ipopt",
         "--linear-solver",
@@ -104,16 +111,6 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         "0.15",
         "--recovery-ma-min",
         "0.15",
-        "--tstep",
-        f"{seed['tstep']:.4f}",
-        "--ffeed",
-        f"{seed['ffeed']:.4f}",
-        "--fdes",
-        f"{seed['fdes']:.4f}",
-        "--fex",
-        f"{seed['fex']:.4f}",
-        "--f1",
-        f"{seed['f1']:.4f}",
     ]
 
     try:
@@ -123,7 +120,7 @@ def optimize_seed_worker(args: Tuple) -> Dict:
             capture_output=True,
             text=True,
             timeout=timeout,
-            env={**os.environ, "OMP_NUM_THREADS": "2"},  # 2 threads for this worker
+            env={**os.environ, "OMP_NUM_THREADS": "2"},
         )
 
         if result.returncode == 0:

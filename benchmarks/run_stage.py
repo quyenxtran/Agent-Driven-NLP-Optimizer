@@ -1809,8 +1809,9 @@ def run_optimize_layouts(args: argparse.Namespace) -> Dict[str, object]:
     cumulative_wall_s = 0.0
     sim_number = 0
 
-    # Whether to run reference evals before optimization (env-configurable)
-    run_ref_gate = bool(int(os.environ.get("SMB_REFERENCE_GATE", "1")))
+    # Whether to run reference evals before optimization (env-configurable or disabled via --no-reference-gate)
+    no_ref_gate_flag = getattr(args, "no_reference_gate", False)
+    run_ref_gate = bool(int(os.environ.get("SMB_REFERENCE_GATE", "1"))) and not no_ref_gate_flag
     # How many seeds to use for the reference-eval gate (default: 3 — the
     # first 3 NOTEBOOK_SEEDS cover the main operating regions)
     ref_gate_max_seeds = int(os.environ.get("SMB_REFERENCE_GATE_MAX_SEEDS", "3"))
@@ -1983,6 +1984,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-dir", default=str(REPO_ROOT / "artifacts" / "smb_stage_runs"))
     parser.add_argument("--solver-name", default="auto")
     parser.add_argument("--solver-candidates", default="ipopt_sens,ipopt,bonmin,couenne,cbc,glpk")
+    parser.add_argument("--no-reference-gate", action="store_true", default=False, help="Disable reference gate evaluations (for fast foundation data generation)")
     parser.add_argument("--linear-solver")
     parser.add_argument("--max-iter", type=int)
     parser.add_argument("--tol", type=float)
