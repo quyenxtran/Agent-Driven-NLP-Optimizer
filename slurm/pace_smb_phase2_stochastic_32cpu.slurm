@@ -83,14 +83,14 @@ echo "  • Fast NCs don't idle; slow ones get multiple workers"
 echo ""
 echo "Configuration:"
 echo "  Discretization: nfex=4, nfet=2, ncp=1 (low-fidelity)"
-echo "  Constraints: purity ≥ 0.15, recovery ≥ 0.15"
-echo "  Total jobs: 32 NCs × 100 seeds = 3,200"
-echo "  Expected ~95%+ success rate"
+echo "  Constraints: purity ≥ 0.15, recovery ≥ 0.15 (with 10% tolerance)"
+echo "  Total jobs: 32 NCs × 25 seeds = 800 (screening run)"
+echo "  Expected ~40-50% feasibility rate"
 echo ""
 echo "Expected Output:"
-echo "  • ~3,040+ total successful seed optimizations"
-echo "  • Serves as foundation for Phase 3 strategies"
-echo "  • Estimated runtime: 2.5-3.5 hours (47 hours → 3 hours, 16x speedup)"
+echo "  • ~320-400 total successful seed optimizations"
+echo "  • Quick screening to validate Phase 2 approach"
+echo "  • Estimated runtime: 30-45 minutes (screening)"
 echo ""
 echo "Parallelization:"
 echo "  • 12 workers in ProcessPoolExecutor (Python multiprocessing)"
@@ -99,10 +99,10 @@ echo "  • Result: 12 seeds optimize simultaneously (across any NCs)"
 echo "  • Total CPUs used: 12 workers × 2 threads = 24 CPUs"
 echo ""
 
-echo "Running Phase 2 with STOCHASTIC parallel optimization..."
+echo "Running Phase 2 SCREENING with STOCHASTIC parallel optimization..."
 echo "Strategy: 12 workers in parallel, each with OMP_NUM_THREADS=2"
 echo "Configuration: 12 seeds optimize simultaneously (12 × 2 threads = 24 CPUs)"
-echo "Expected speedup: 12x (47 hours → ~4 hours)"
+echo "Expected runtime: ~30-45 minutes (800 jobs / 15 logs per min)"
 echo ""
 
 "${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_parallel_stochastic \
@@ -113,7 +113,7 @@ echo ""
          "[2,2,3,1]" "[2,3,1,2]" "[2,3,2,1]" "[3,1,1,3]" "[3,1,2,2]" \
          "[3,1,3,1]" "[3,2,1,2]" "[3,2,2,1]" "[3,3,1,1]" "[4,1,1,2]" \
          "[4,1,2,1]" "[4,2,1,1]" \
-  --n-seeds 100 \
+  --n-seeds 25 \
   --artifact-dir "$ARTIFACT_DIR" \
   --timeout 120 \
   --n-workers 12 \

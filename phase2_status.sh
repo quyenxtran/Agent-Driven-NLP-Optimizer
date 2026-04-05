@@ -2,7 +2,7 @@
 # Simple status script for use with 'watch' command
 # Usage: watch -n 5 ./phase2_status.sh
 
-JOB_ID="6285721"
+JOB_ID="6285813"
 ARTIFACT_DIR="artifacts/phase2_lhs_seeding"
 IPOPT_DIR="$ARTIFACT_DIR/ipopt_logs"
 
