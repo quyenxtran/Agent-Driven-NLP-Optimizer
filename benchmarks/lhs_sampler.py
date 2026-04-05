@@ -13,50 +13,84 @@ import numpy as np
 from typing import List, Dict, Tuple
 
 
-def generate_lhs_configs(n_samples: int = 60, seed: int = 42) -> List[List[int]]:
+def generate_valid_constrained_configs(target_sum: int = 8, min_val: int = 1, max_val: int = 4) -> List[List[int]]:
+    """
+    Generate all valid NC configurations where sum(nc) = target_sum.
+
+    Each dimension must be in [min_val, max_val].
+
+    Args:
+        target_sum: Target sum of all four dimensions (default 8)
+        min_val: Minimum value per dimension (default 1)
+        max_val: Maximum value per dimension (default 4)
+
+    Returns:
+        List of all valid [nc0, nc1, nc2, nc3] configurations
+    """
+    configs = []
+    for nc0 in range(min_val, max_val + 1):
+        for nc1 in range(min_val, max_val + 1):
+            for nc2 in range(min_val, max_val + 1):
+                for nc3 in range(min_val, max_val + 1):
+                    if nc0 + nc1 + nc2 + nc3 == target_sum:
+                        configs.append([nc0, nc1, nc2, nc3])
+    return configs
+
+
+def generate_lhs_configs(n_samples: int = 60, seed: int = 42, target_sum: int = 8) -> List[List[int]]:
     """
     Generate Latin Hypercube stratified samples of NC configuration space.
 
-    Each NC dimension [0, 1, 2, 3] ranges from 1 to 4 columns.
-    LHS ensures each dimension is divided into n_samples equal strata
+    Generates configurations where each NC dimension [0, 1, 2, 3] is in [1, 4]
+    and the total sum equals target_sum (default 8).
+
+    LHS stratifies the valid configuration space to ensure systematic coverage
     with one sample per stratum, avoiding clustering.
 
     Args:
         n_samples: Number of configurations to generate (60 recommended)
         seed: Random seed for reproducibility
+        target_sum: Total column count constraint (default 8)
 
     Returns:
-        List of [nc0, nc1, nc2, nc3] configurations where each is in [1, 4]
+        List of [nc0, nc1, nc2, nc3] configurations with sum = target_sum
 
     Example:
-        >>> configs = generate_lhs_configs(60, seed=42)
-        >>> len(configs)
-        60
-        >>> all(1 <= nc <= 4 for c in configs for nc in c)
+        >>> configs = generate_lhs_configs(60, seed=42, target_sum=8)
+        >>> len(configs) <= 60
+        True
+        >>> all(sum(c) == 8 for c in configs)
         True
     """
     np.random.seed(seed)
 
-    # Number of possible values per dimension
-    min_val, max_val = 1, 4
-    n_values = max_val - min_val + 1  # 4 values: [1, 2, 3, 4]
+    # Generate all valid configurations with sum = target_sum
+    all_valid_configs = generate_valid_constrained_configs(target_sum)
 
-    # Generate Latin Hypercube samples in [0, 1]^4
-    lhs_samples = latin_hypercube_samples(n_samples, n_dim=4, seed=seed)
+    if len(all_valid_configs) == 0:
+        raise ValueError(f"No valid configurations found with sum={target_sum}")
 
-    configs = []
+    # If we have fewer valid configs than requested samples, return all
+    if len(all_valid_configs) <= n_samples:
+        return all_valid_configs
+
+    # Otherwise, use LHS to select a stratified subset
+    # Encode each config as a position in the valid config space
+    n_valid = len(all_valid_configs)
+
+    # Generate LHS samples in [0, 1]^1 (just one dimension for selection)
+    lhs_samples = latin_hypercube_samples(n_samples, n_dim=1, seed=seed)
+
+    # Map LHS samples to indices in the valid config list
+    selected_indices = set()
     for sample in lhs_samples:
-        # Map [0, 1] to [1, 4] for each dimension
-        nc = []
-        for dim_val in sample:
-            # Divide [0, 1] into strata
-            stratum_idx = int(dim_val * n_values)
-            # Clamp to valid range
-            stratum_idx = min(stratum_idx, n_values - 1)
-            nc_val = min_val + stratum_idx
-            nc.append(nc_val)
+        # Map [0, 1] to [0, n_valid)
+        idx = int(sample[0] * n_valid)
+        idx = min(idx, n_valid - 1)
+        selected_indices.add(idx)
 
-        configs.append(nc)
+    # Select configs in order to preserve stratification
+    configs = [all_valid_configs[i] for i in sorted(selected_indices)]
 
     return configs
 
@@ -100,20 +134,21 @@ def latin_hypercube_samples(
     return samples
 
 
-def is_valid_nc_config(nc: List[int]) -> bool:
+def is_valid_nc_config(nc: List[int], target_sum: int = 8) -> bool:
     """
     Check basic validity of NC configuration.
 
     Validates:
     - Length is 4
     - Each value in [1, 4]
-    - Total columns reasonable (3-16)
+    - Total columns equals target_sum (default 8)
 
     Note: This is a fast pre-filter. Full feasibility checked during
     physics filtering phase.
 
     Args:
         nc: [nc0, nc1, nc2, nc3] configuration
+        target_sum: Required total column count (default 8)
 
     Returns:
         True if configuration passes basic validity checks
@@ -131,9 +166,9 @@ def is_valid_nc_config(nc: List[int]) -> bool:
     if not all(1 <= x <= 4 for x in nc_int):
         return False
 
-    # Check total columns reasonable
+    # Check total columns equals target_sum (CRITICAL CONSTRAINT)
     total_cols = sum(nc_int)
-    if total_cols < 3 or total_cols > 16:
+    if total_cols != target_sum:
         return False
 
     return True
@@ -168,19 +203,26 @@ def get_config_stats(configs: List[List[int]]) -> Dict[str, float]:
 if __name__ == "__main__":
     # Test LHS sampler
     print("=" * 70)
-    print("LHS Configuration Sampler - Test")
+    print("LHS Configuration Sampler - Test (Target Sum = 8)")
     print("=" * 70)
     print()
 
+    # Generate all valid configs for reference
+    all_valid = generate_valid_constrained_configs(target_sum=8)
+    print(f"Total valid configurations with sum=8: {len(all_valid)}")
+    print()
+
     # Generate samples
-    configs = generate_lhs_configs(n_samples=60, seed=42)
-    print(f"Generated {len(configs)} LHS samples")
+    configs = generate_lhs_configs(n_samples=60, seed=42, target_sum=8)
+    print(f"Generated {len(configs)} LHS samples (requested 60)")
     print(f"First 5 configs: {configs[:5]}")
+    print(f"Sums: {[sum(c) for c in configs[:5]]}")
     print()
 
     # Validate
-    valid = [c for c in configs if is_valid_nc_config(c)]
+    valid = [c for c in configs if is_valid_nc_config(c, target_sum=8)]
     print(f"Valid configs: {len(valid)}/{len(configs)}")
+    print(f"All configs sum to 8: {all(sum(c) == 8 for c in valid)}")
     print()
 
     # Statistics
