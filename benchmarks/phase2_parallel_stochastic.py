@@ -45,16 +45,16 @@ def generate_lhs_seeds(n_seeds: int = 100) -> List[Dict[str, float]]:
     """Generate N-D Latin Hypercube samples for flow space.
 
     Only sample independent variables (tstep, ffeed, fdes, fex).
-    Derive F1 from mass balance: F1 = Fdes + Fex
-    Enforce physical feasibility: Fraf = F1 - Ffeed = Fdes + Fex - Ffeed ≥ 0
-    (reject seeds where Ffeed > Fdes + Fex)
+    Enforce physical feasibility: Fraf = Ffeed + Fdes - Fex ≥ 0
+    (from mass balance constraint in optimization.py:67)
+    Reject seeds where Ffeed + Fdes < Fex
     """
     var_names = ["tstep", "ffeed", "fdes", "fex"]
     bounds = [(8.0, 12.0), (0.5, 2.5), (0.5, 2.5), (0.5, 2.5)]
 
     sampler = qmc.LatinHypercube(d=4, seed=42)
-    # Generate 50% extra samples to account for rejected seeds
-    samples = sampler.random(n=int(n_seeds * 1.5))
+    # Generate 100% extra samples to account for rejections
+    samples = sampler.random(n=int(n_seeds * 2.0))
 
     seeds = []
     for sample in samples:
@@ -62,11 +62,11 @@ def generate_lhs_seeds(n_seeds: int = 100) -> List[Dict[str, float]]:
             var_names[i]: bounds[i][0] + sample[i] * (bounds[i][1] - bounds[i][0])
             for i in range(4)
         }
-        # Derive F1 from mass balance: F1 = Fdes + Fex
-        seed['f1'] = seed['fdes'] + seed['fex']
-        # Check physical feasibility: Fraf = F1 - Ffeed ≥ 0
-        fraf = seed['f1'] - seed['ffeed']
+        # Check physical feasibility: Fraf = Ffeed + Fdes - Fex ≥ 0
+        fraf = seed['ffeed'] + seed['fdes'] - seed['fex']
         if fraf >= 0:
+            # Derive F1 from mass balance: F1 = Ffeed + Fraf
+            seed['f1'] = seed['ffeed'] + fraf
             seeds.append(seed)
             if len(seeds) >= n_seeds:
                 break
