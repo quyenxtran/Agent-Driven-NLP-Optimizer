@@ -63,10 +63,7 @@
       "Bash(sbatch slurm/pace_smb_27b_bo_gp_baseline.slurm)",
       "Bash(squeue -u qtran47 --format=\"%.10i %.20j %.10T %.5C %.10m %.10M\")",
       "Bash(grep -E \"Phase 2 Iter|Optimizing NC=\" /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/logs/smb-phase2-opt-*.out)",
-      "Bash(sbatch slurm/pace_smb_phase2_lhs_seeding.slurm)",
-      "Bash(chmod +x /storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/scripts/check_and_summarize_results.sh)",
-      "Read(//storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/**)",
-      "Bash(bash scripts/check_and_summarize_results.sh)"
+      "Bash(sbatch slurm/pace_smb_phase2_lhs_seeding.slurm)"
     ]
   }
 }
