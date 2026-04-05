@@ -500,9 +500,55 @@ def screening_bundle_indices(
     return ([selected_idx] + bundle)[:remaining]
 
 
+def rank_configs_with_lhs(
+    nc_library: List[Tuple[int, int, int, int]],
+    use_lhs_ranking: bool = False,
+) -> List[Tuple[int, int, int, int]]:
+    """
+    Optionally re-rank NC configurations using LHS physics-based scoring.
+
+    If use_lhs_ranking is True, uses physics heuristics (selectivity, throughput, solver difficulty).
+    Otherwise returns library with default nc_prior_score ranking.
+
+    Args:
+        nc_library: List of [nc0, nc1, nc2, nc3] configurations
+        use_lhs_ranking: If True, apply LHS-based physics scoring
+
+    Returns:
+        Sorted list of NC configurations
+    """
+    if not use_lhs_ranking:
+        return sorted(nc_library, key=nc_prior_score, reverse=True)
+
+    try:
+        from .lhs_sampler import generate_lhs_configs
+        from .physics_filter import filter_and_rank_lhs_configs
+
+        # Generate LHS configs (will be the constrained set where sum=8)
+        lhs_configs = generate_lhs_configs(n_samples=100, seed=42, target_sum=8)
+
+        # Filter and score
+        result = filter_and_rank_lhs_configs(lhs_configs, n_keep=len(lhs_configs), target_sum=8)
+
+        # Extract ranked configs (already sorted by score)
+        ranked_configs = [tuple(int(v) for v in config) for config, _, _ in result["top_n"]]
+
+        # Ensure all configs in original nc_library are included
+        ranked_set = set(ranked_configs)
+        remaining = [nc for nc in nc_library if tuple(nc) not in ranked_set]
+
+        return ranked_configs + remaining
+
+    except (ImportError, Exception) as e:
+        # Fallback: return default ranking if LHS import fails
+        print(f"[LHS ranking] Fallback to default nc_prior_score: {e}")
+        return sorted(nc_library, key=nc_prior_score, reverse=True)
+
+
 def build_search_tasks(args: argparse.Namespace) -> List[Dict[str, object]]:
     nc_library = rs.parse_nc_library(args.nc_library)
-    nc_library = sorted(nc_library, key=nc_prior_score, reverse=True)
+    use_lhs = getattr(args, "use_lhs_ranking", False)
+    nc_library = rank_configs_with_lhs(nc_library, use_lhs_ranking=use_lhs)
     seed_library = rs.parse_seed_library(args.seed_library)
     if not seed_library:
         return []

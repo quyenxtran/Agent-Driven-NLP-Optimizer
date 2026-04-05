@@ -52,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--research-tail-chars", type=int, default=int(os.environ.get("SMB_RESEARCH_TAIL_CHARS", "1200")))
     parser.add_argument("--reset-research-section", action="store_true", default=os.environ.get("SMB_RESEARCH_RESET_SECTION", "0") == "1")
     parser.add_argument("--nc-library", default=os.environ.get("SMB_NC_LIBRARY", "all"))
+    parser.add_argument(
+        "--use-lhs-ranking",
+        action="store_true",
+        default=os.environ.get("SMB_USE_LHS_RANKING", "0") == "1",
+        help="Use LHS-based physics scoring to rank NC configurations (Plan B)",
+    )
     parser.add_argument("--seed-library", default=os.environ.get("SMB_SEED_LIBRARY", "notebook"))
     parser.add_argument("--solver-name", default=os.environ.get("SMB_SOLVER_NAME", "auto"))
     parser.add_argument("--linear-solver", default=os.environ.get("SMB_LINEAR_SOLVER", "mumps"))
