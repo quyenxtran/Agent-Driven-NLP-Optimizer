@@ -78,6 +78,7 @@ def optimize_seed_worker(args: Tuple) -> Dict:
 
     # Worker inherits OMP_NUM_THREADS=2 from parent process
     nc_str = format_nc(nc)
+    nc_library_str = ",".join(str(x) for x in nc)
     run_name = f"phase2_parallel_nc_{nc_str}_seed_{seed_idx}"
 
     cmd = [
@@ -90,8 +91,8 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         run_name,
         "--artifact-dir",
         artifact_dir,
-        "--nc",
-        nc_str,
+        "--nc-library",
+        nc_library_str,
         "--solver-name",
         "ipopt",
         "--linear-solver",

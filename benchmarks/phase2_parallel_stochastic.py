@@ -81,6 +81,8 @@ def optimize_seed_worker(args: Tuple) -> Dict:
     nc, seed_idx, seed_dict, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_min = args
 
     nc_str = format_nc(nc)
+    # nc-library format is "a,b,c,d" (no brackets, comma-separated)
+    nc_library_str = ",".join(str(x) for x in nc)
     run_name = f"phase2_stoch_nc_{nc_str}_seed_{seed_idx}"
 
     cmd = [
@@ -93,8 +95,8 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         run_name,
         "--artifact-dir",
         artifact_dir,
-        "--nc",
-        nc_str,
+        "--nc-library",
+        nc_library_str,
         "--solver-name",
         "ipopt",
         "--linear-solver",
