@@ -5,19 +5,26 @@
 A hierarchical approach to find global optima across the SMB design space and build accurate surrogate models for agent-guided optimization.
 
 ```
-Phase 1: Quick Screening        Phase 2: Optimization           Phase 3: BO Surrogates
-┌─────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
-│ Fixed Flow Eval     │        │ Real Optimization    │        │ Agent-Guided BO      │
-├─────────────────────┤        ├──────────────────────┤        ├──────────────────────┤
-│ • 31 NC configs     │        │ • Top 5-10 NCs       │        │ • Fit BO models      │
-│ • Default flows     │   →    │ • Optimize flows     │   →    │ • Agent prioritizes  │
-│ • ~1 min total      │        │ • Hard constraints   │        │ • Explores best      │
-│ • Rank by baseline  │        │ • Max productivity   │        │ • Confirms global    │
-│ • Data: baseline J  │        │ • ~10 min total      │        │ • Data: J,pu,rec     │
-└─────────────────────┘        └──────────────────────┘        └──────────────────────┘
-          ↓                              ↓                              ↓
-    Identify top NCs            Collect optimization data      Train GP/DNN/PINN models
-    for Phase 2                 (productivity, purity, rec)    on outputs (3 metrics)
+Phase 1: Baseline        Phase 2-4: BO Development              Phase 5: Final Validation
+┌──────────────┐        ┌─────────────────────────────────┐   ┌──────────────────────┐
+│ Quick Screen │        │ LOOSE Constraints (20% rec/pu)  │   │ STRICT Constraints   │
+├──────────────┤        ├─────────────────────────────────┤   ├──────────────────────┤
+│ • 31 NCs     │   →    │ Phase 2: Optimize (loose)       │   │ FINAL Validation     │
+│ • Fixed flow │        │ Phase 3: BO surrogates train    │   │ • Best candidates    │
+│ • ~1 min     │        │ Phase 4: Agent explores (loose) │   │ • Strict constraints │
+│ • Baseline J │        │ • Collect J,pu,rec data         │   │ • High fidelity      │
+│ • Data: lots │        │ • ~20 min for all phases        │   │ • TRUE global opt    │
+└──────────────┘        └─────────────────────────────────┘   └──────────────────────┘
+                                       ↓
+                      Train BO on relaxed design space
+                      (get more feasible points, cover design space)
+                                       ↓
+                      Agent explores with loose constraints
+                      (maximize Pareto frontier in relaxed space)
+                                       ↓
+                      Extract best candidates
+                                       ↓
+                      VALIDATE with strict constraints ← TRUE GLOBAL OPTIMUM
 ```
 
 ---
@@ -55,18 +62,18 @@ tstep = 9.4 min
 
 ---
 
-## Phase 2: Constrained Optimization (Real Optima)
+## Phase 2: Constrained Optimization (LOOSE constraints for BO development)
 
-**Purpose**: Find true optimal flows for each top-ranked NC
+**Purpose**: Find optimal flows for each top-ranked NC (with relaxed constraints for data collection)
 
 **What it does**:
 - Takes top 5-10 NCs from Phase 1
 - Runs **real optimization** with IPOPT as optimizer
 - Unfixes all 5 flow variables: [Ffeed, Fdes, Fex, F1, tstep]
-- Applies hard constraints:
-  - Purity (MeOH-free, extract) ≥ **0.70** (exploratory)
-  - Recovery (GA) ≥ **0.90**
-  - Recovery (MA) ≥ **0.90**
+- Applies **LOOSE constraints** (for BO training data):
+  - Purity (MeOH-free, extract) ≥ **0.20** ← relaxed
+  - Recovery (GA) ≥ **0.20** ← relaxed
+  - Recovery (MA) ≥ **0.20** ← relaxed
   - Max pump flow ≤ **3.0** ml/min
 - Maximizes: **Productivity (J)**
 
@@ -87,13 +94,72 @@ tstep = 9.4 min
 **Script**: `slurm/pace_smb_phase2_optimization.slurm`
 
 **Key differences from Phase 1**:
-| Aspect | Phase 1 | Phase 2 |
+| Aspect | Phase 1 | Phase 2 (Dev) |
 |--------|---------|---------|
 | Flows | **Fixed** | **Optimized** |
-| Purity constraint | None | ≥ 0.70 |
-| Recovery constraint | None | ≥ 0.90 |
+| Purity constraint | None | ≥ **0.20** (loose) |
+| Recovery constraint | None | ≥ **0.20** (loose) |
 | Objective | Evaluate only | **Maximize** |
 | Iterations | 31 × 1 | 5-10 × many |
+
+---
+
+## Phase 3-4: BO Surrogates & Agent Exploration (LOOSE constraints)
+
+**Purpose**: Explore design space and find promising regions with relaxed constraints
+
+**What it does**:
+- Train BO models (GP, DNN, PINN) on Phase 1+2 data
+- Each BO method predicts: (productivity, purity, recovery)
+- Agent receives predictions and decides next NC/flows to evaluate
+- All evaluations use **LOOSE constraints** (same as Phase 2):
+  - Purity ≥ 0.20
+  - Recovery ≥ 0.20
+  - Allows broad exploration of design space
+
+**Results**:
+- Expanded dataset with agent-guided exploration
+- Identified promising NC configurations and flow regions
+- BO learns Pareto frontier in relaxed space
+
+**Time**: Time budget (11 hours)
+
+---
+
+## Phase 5: Final Validation (STRICT production constraints)
+
+**Purpose**: Validate best candidates with **STRICT production specifications** to find true global optimum
+
+**What it does**:
+- Takes top 3-5 candidates from Phase 4 (agent exploration)
+- Runs optimization with **STRICT constraints**:
+  - Purity (MeOH-free, extract) ≥ **0.70** ← production spec
+  - Recovery (GA) ≥ **0.90** ← production spec
+  - Recovery (MA) ≥ **0.90** ← production spec
+  - Max pump flow ≤ **3.0** ml/min
+- High fidelity: nfex=10, nfet=5, ncp=2
+
+**Results**:
+- **TRUE GLOBAL OPTIMUM** under production constraints
+- Comparison: loose-constraint best vs strict-constraint best
+- May show some Phase 4 candidates don't meet production specs
+- Reveals feasible region boundary
+
+**Script**: `slurm/pace_smb_phase5_final_validation.slurm`
+
+---
+
+## Constraint Strategy Summary
+
+| Phase | Purpose | Purity | Recovery | Objective |
+|-------|---------|--------|----------|-----------|
+| 1 | Baseline | None | None | Evaluate at fixed |
+| 2-4 | BO Development | **≥0.20** | **≥0.20** | Maximize J |
+| 5 | Final Validation | **≥0.70** | **≥0.90** | Confirm optimum |
+
+**Rationale**:
+- **Loose (phases 2-4)**: More feasible points → more training data → better BO models → better agent guidance
+- **Strict (phase 5)**: True production requirements → validate which solutions actually work → find real global optimum
 
 ---
 
