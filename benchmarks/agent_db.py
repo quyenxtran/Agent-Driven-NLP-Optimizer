@@ -408,7 +408,7 @@ def sqlite_targeted_query(conn: sqlite3.Connection, query_type: str, **kwargs: o
     return "\n".join(lines) if lines else "No results."
 
 
-def sqlite_history_context(conn: sqlite3.Connection, max_feasible: int = 5, max_near: int = 5, max_recent: int = 6, optimize_context: bool = True) -> str:
+def sqlite_history_context(conn: sqlite3.Connection, max_feasible: int = 3, max_near: int = 3, max_recent: int = 5, optimize_context: bool = True) -> str:
     counts = conn.execute(
         """
         SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN feasible=1 THEN 1 ELSE 0 END), 0) AS feasible_count

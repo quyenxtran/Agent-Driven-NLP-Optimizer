@@ -74,7 +74,7 @@ mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 LLAMACPP_MODEL_PATH="${LLAMACPP_MODEL_PATH:-/storage/scratch1/4/qtran47/models/gguf/qwen35-27b/Qwen3.5-27B-Q4_K_M.gguf}"
 
 # Server configuration
-LLAMACPP_PORT="${LLAMACPP_PORT:-8000}"
+LLAMACPP_PORT="${LLAMACPP_PORT:-8001}"
 LLAMACPP_HOST="127.0.0.1"
 LLAMACPP_BASE_URL="http://${LLAMACPP_HOST}:${LLAMACPP_PORT}/v1"
 LLAMACPP_API_LOG="${LOG_DIR}/llamacpp-qwen27b-${SLURM_JOB_ID:-local}.log"

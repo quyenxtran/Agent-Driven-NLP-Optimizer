@@ -12370,3 +12370,771 @@ Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
 - executive_priority_updates:
   - Systematic infeasibility trigger forced a diagnostic run next iteration.
 - execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+
+## Run: qwen35b_llamacpp_agent
+
+- started_utc: 2026-04-05 00:03:29 UTC
+- benchmark_hours: 11.0
+- search_hours: 10.0
+- validation_hours: 1.0
+- min_probe_reference_runs: 3
+- probe_low_fidelity_enabled: True
+- probe_fidelity: nfex=5, nfet=2, ncp=1
+- finalization_hard_gate_enabled: True
+- finalization_low_fidelity_requirements: nfex<=5, nfet<=2, ncp<=1
+- ipopt_defaults: max_iter=1000, tol=1e-05, acceptable_tol=0.0001
+- solver_name: auto
+- linear_solver: ma57
+- nc_library: all
+- seed_library: notebook
+- exploratory_targets: purity=, recovery_ga=, recovery_ma=
+- project_objective_targets: purity=0.6, recovery_ga=0.75, recovery_ma=0.75
+- executive_controller: enabled=True, trigger_rejects=2, force_after=3, top_k_lock=5
+- single_scientist_mode: False
+- sqlite_db: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/artifacts/agent_runs/smb_agent_context.sqlite
+
+### Codebase Context Snapshot
+```text
+Optimization file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/optimization.py
+Model file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/model.py
+Metrics file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/metrics.py
+Benchmark stage driver: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/run_stage.py
+Optimization constraints: ['CE_cons', 'CR_cons', 'ExtractWater', 'PurityExMeohFree', 'PurityExMeohFree_relaxed', 'RaffMeoh', 'RaffinateConsistency', 'RecoveryExGA', 'RecoveryExGA_relaxed', 'RecoveryExMA', 'RecoveryExMA_relaxed', 'Zone1EntryWater']
+Model constraints: ['Equilibrium', 'FlowCondition', 'MassBalanceLiquid', 'MassBalanceSolid']
+Objective expression: m.obj = Objective(expr=ce_acid * m.UE * inputs.area * inputs.eb, sense=maximize)
+Flow-consistency in optimization: True
+Solver entrypoint present: True
+Metrics available in code: ['Frec', 'productivity_ex_ga_ma', 'purity_ex_meoh_free', 'purity_ex_overall', 'recovery_balance_acid', 'recovery_ex', 'recovery_raff']
+Key config fields: ['F1', 'F1_init', 'Fdes', 'Fdes_init', 'Fex', 'Fex_init', 'Ffeed', 'Ffeed_init', 'Fraf', 'Fraf_init', 'L', 'Pe']
+Benchmark stages: ['solver-check', 'reference-eval', 'nc-screen', 'flow-screen', 'optimize-layouts']
+```
+
+### Runtime Compute Snapshot
+```text
+No runtime compute metadata found in environment.
+```
+
+### Simulation Constraint Snapshot
+```text
+Flow bounds: F1 in 0.5,5.0
+Flow bounds: Ffeed in 0.5,2.5, Fdes in 0.5,2.5, Fex in 0.5,2.5, Fraf in 0.5,5.0
+tstep bounds: 8.0,12.0
+max pump flow ml/min: 2.5
+F1 max flow cap ml/min: 5.0
+exploratory purity_ex_meoh_free minimum: 0.9
+exploratory recovery_ex_GA minimum: 0.9
+exploratory recovery_ex_MA minimum: 0.9
+project purity_ex_meoh_free objective minimum: 0.6
+project recovery_ex_GA objective minimum: 0.75
+project recovery_ex_MA objective minimum: 0.75
+raffinate MeOH max wt: 0.1
+extract Water max wt: 0.05
+zone1-entry Water max wt: 0.01
+```
+
+### Existing History Snapshot
+```text
+SQLite context: total_records=212, feasible_records=0
+Top feasible records by J_validated:
+- none
+Top near-feasible records by normalized violation:
+- qwen35_llamacpp_parse_search_nc_1-3-2-2_optimized_a nc=1,3,2,2 seed=optimized_a viol=0.0 prod=0.02438325837450604 purity=0.9062609885884026 rGA=2.079985481258131 rMA=0.9000009178115764 metrics_validated=0
+- qwen27b_llamacpp_parse_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=3.153672935142361e-07 prod=0.016430405998462252 purity=0.899999726342073 rGA=0.9869910200475294 rMA=0.8999999898273628 metrics_validated=0
+- qwen35_llamacpp_parse_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=1.5343631936608975e-06 prod=0.029238845121392774 purity=0.8999986190731257 rGA=1.0327417516308817 rMA=2.2034428487067825 metrics_validated=0
+- qwen35_llamacpp_parse_search_nc_2-2-2-2_reference nc=2,2,2,2 seed=reference viol=0.02914835644339142 prod=0.0031557471520927334 purity=0.8737664792009477 rGA=0.9001127468189707 rMA=0.9001010019686034 metrics_validated=0
+- qwen27b_llamacpp_parse_search_nc_1-2-3-2_reference nc=1,2,3,2 seed=reference viol=0.02925962255078487 prod=0.0031553721515132326 purity=0.8736663397042936 rGA=0.9000000198753355 rMA=0.9000000156691905 metrics_validated=0
+Most recent records:
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_tstep nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.3,F1=2.2,Fdes=1.25,Fex=0.9,Fraf=1.65,tstep=9.8)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_plus nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.4000000000000001,F1=2.3000000000000003,Fdes=1.25,Fex=0.9500000000000001,Fraf=1.7000000000000002,tstep=9.200000000000001)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_minus nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.2,F1=2.1,Fdes=1.15,Fex=0.85,Fraf=1.4999999999999996,tstep=9.6)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.3,F1=2.2,Fdes=1.2,Fex=0.9,Fraf=1.6,tstep=9.4)
+- qwen27b_llamacpp_parse_search_nc_2-1-2-3_optimized_2f2 nc=2,1,2,3 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.6,F1=2.9,Fdes=1.6,Fex=1.2,Fraf=2.0,tstep=8.5)
+- qwen27b_llamacpp_parse_search_nc_2-1-2-3_optimized_2f1 nc=2,1,2,3 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.5,F1=2.7,Fdes=1.5,Fex=1.1,Fraf=1.9,tstep=8.7)
+```
+
+### NC Strategy Board
+```text
+NC strategy board (35 layouts in current library):
+Scientific screening rubric:
+- rank by observed evidence: feasibility, J_validated, productivity, violation; no prior layout preference
+- penalize repeated solver_error histories and high average walltime
+- mild penalty for extreme zone asymmetry (one zone with many more columns than others); no zone count targets assumed
+Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
+- rank=01 nc=[2, 2, 2, 2] score=109.95 attempts=30 feasible=0 solver_error=30 best_violation=3.15367e-07 best_prod=0.0292388 best_J=n/a avg_wall_s=31.2
+- rank=02 nc=[1, 3, 2, 2] score=106.99 attempts=27 feasible=0 solver_error=27 best_violation=0 best_prod=0.0243833 best_J=n/a avg_wall_s=7.6
+- rank=03 nc=[1, 2, 3, 2] score=106.40 attempts=29 feasible=0 solver_error=29 best_violation=0.0292596 best_prod=0.0178767 best_J=n/a avg_wall_s=11.5
+- rank=04 nc=[1, 1, 3, 3] score=102.45 attempts=22 feasible=0 solver_error=22 best_violation=0.221427 best_prod=0.0137983 best_J=n/a avg_wall_s=75.7
+- rank=05 nc=[1, 2, 2, 3] score=98.55 attempts=22 feasible=0 solver_error=22 best_violation=0.420643 best_prod=0.017856 best_J=n/a avg_wall_s=20.6
+- rank=06 nc=[2, 2, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=07 nc=[2, 3, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=08 nc=[2, 3, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=09 nc=[3, 1, 1, 3] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=10 nc=[3, 1, 2, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=11 nc=[3, 1, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=12 nc=[3, 2, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=13 nc=[3, 2, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=14 nc=[3, 3, 1, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=15 nc=[1, 1, 2, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=16 nc=[1, 1, 4, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=17 nc=[1, 2, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=18 nc=[1, 2, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=19 nc=[1, 4, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=20 nc=[1, 4, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=21 nc=[2, 1, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=22 nc=[2, 1, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=23 nc=[2, 4, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=24 nc=[4, 1, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=25 nc=[4, 1, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=26 nc=[4, 2, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=27 nc=[1, 1, 1, 5] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=28 nc=[1, 1, 5, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=29 nc=[1, 5, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=30 nc=[5, 1, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=31 nc=[2, 2, 1, 3] score=77.00 attempts=1 feasible=0 solver_error=1 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=1.0
+- rank=32 nc=[2, 1, 3, 2] score=76.99 attempts=15 feasible=0 solver_error=15 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.1
+- rank=33 nc=[2, 1, 2, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=34 nc=[1, 3, 1, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=35 nc=[1, 3, 3, 1] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+```
+
+### Initial Priorities
+- Feasibility-first: reduce normalized_total_violation before maximizing productivity.
+- Respect hard bounds and flow consistency: keep flows in configured bounds and treat raffinate as derived.
+- Pre-screen all 35 NC layouts by evidence and scientific prior before deep seed sweeps.
+- Screen layouts quickly at medium fidelity, then validate top candidates at high fidelity.
+- Use solver stack auto/ma57 and track termination_condition per run.
+- Use provisional metrics only as direction signals; prefer validated metrics for ranking.
+
+### Initial Proposed Simulations
+- Run each nc layout with the reference seed first to establish layout ranking under fixed conditions.
+- Only then expand to non-reference seeds for top-ranked layouts.
+- Perturb feed/desorbent/extract around best near-feasible point to reduce violation.
+- Promote top candidates to high-fidelity validation.
+
+### NC Screening Strategy
+- Screen all 35 NC layouts using the reference seed first, then expand seeds on top-ranked layouts.
+- Use NC ranking criteria: prior closeness to reference, solver-error history, best violation, and runtime cost.
+
+### Initial Risks
+- Local infeasibility from tight purity/recovery constraints.
+- Solver-status 'other' without usable primal variables.
+- Bounds clipping on internal velocities when tstep/flows are inconsistent.
+
+### Insights and Trends (Rolling)
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+
+
+### Search Iteration 01
+- timestamp_utc: 2026-04-05 00:03:33 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- scientist_a_reason: Bootstrap reference run executed to seed evidence before strict A/B/C gating (1/2).
+- scientist_a_mode: bootstrap_reference
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Bootstrap reference run bypassed Scientist_B review to avoid startup deadlock.
+- scientist_b_mode: bootstrap_reference
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Bootstrap mode active: collect baseline run evidence before relying on LLM proposal quality.
+  - Bootstrap mode active: bypass Scientist_B for initial deterministic evidence collection.
+- scientist_a_comparison_to_previous:
+  - Bootstrap reference run to establish initial baseline for data-grounded A/B/C comparisons.
+- scientist_a_evidence:
+  - No/limited prior evidence available; run deterministic reference probe first.
+- executive_decision: not_needed
+- executive_reason: Scientist_B approved candidate; executive override not needed.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+
+## Run: qwen27b_llamacpp_parse
+
+- started_utc: 2026-04-05 00:04:53 UTC
+- benchmark_hours: 11.0
+- search_hours: 10.0
+- validation_hours: 1.0
+- min_probe_reference_runs: 3
+- probe_low_fidelity_enabled: True
+- probe_fidelity: nfex=5, nfet=2, ncp=1
+- finalization_hard_gate_enabled: True
+- finalization_low_fidelity_requirements: nfex<=5, nfet<=2, ncp<=1
+- ipopt_defaults: max_iter=1000, tol=1e-05, acceptable_tol=0.0001
+- solver_name: auto
+- linear_solver: ma97
+- nc_library: all
+- seed_library: notebook
+- exploratory_targets: purity=, recovery_ga=, recovery_ma=
+- project_objective_targets: purity=0.6, recovery_ga=0.75, recovery_ma=0.75
+- executive_controller: enabled=True, trigger_rejects=2, force_after=3, top_k_lock=5
+- single_scientist_mode: False
+- sqlite_db: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/artifacts/agent_runs/smb_agent_context.sqlite
+
+### Codebase Context Snapshot
+```text
+Optimization file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/optimization.py
+Model file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/model.py
+Metrics file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/metrics.py
+Benchmark stage driver: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/run_stage.py
+Optimization constraints: ['CE_cons', 'CR_cons', 'ExtractWater', 'PurityExMeohFree', 'PurityExMeohFree_relaxed', 'RaffMeoh', 'RaffinateConsistency', 'RecoveryExGA', 'RecoveryExGA_relaxed', 'RecoveryExMA', 'RecoveryExMA_relaxed', 'Zone1EntryWater']
+Model constraints: ['Equilibrium', 'FlowCondition', 'MassBalanceLiquid', 'MassBalanceSolid']
+Objective expression: m.obj = Objective(expr=ce_acid * m.UE * inputs.area * inputs.eb, sense=maximize)
+Flow-consistency in optimization: True
+Solver entrypoint present: True
+Metrics available in code: ['Frec', 'productivity_ex_ga_ma', 'purity_ex_meoh_free', 'purity_ex_overall', 'recovery_balance_acid', 'recovery_ex', 'recovery_raff']
+Key config fields: ['F1', 'F1_init', 'Fdes', 'Fdes_init', 'Fex', 'Fex_init', 'Ffeed', 'Ffeed_init', 'Fraf', 'Fraf_init', 'L', 'Pe']
+Benchmark stages: ['solver-check', 'reference-eval', 'nc-screen', 'flow-screen', 'optimize-layouts']
+```
+
+### Runtime Compute Snapshot
+```text
+No runtime compute metadata found in environment.
+```
+
+### Simulation Constraint Snapshot
+```text
+Flow bounds: F1 in 0.5,5.0
+Flow bounds: Ffeed in 0.5,2.5, Fdes in 0.5,2.5, Fex in 0.5,2.5, Fraf in 0.5,5.0
+tstep bounds: 8.0,12.0
+max pump flow ml/min: 2.5
+F1 max flow cap ml/min: 5.0
+exploratory purity_ex_meoh_free minimum: 0.9
+exploratory recovery_ex_GA minimum: 0.9
+exploratory recovery_ex_MA minimum: 0.9
+project purity_ex_meoh_free objective minimum: 0.6
+project recovery_ex_GA objective minimum: 0.75
+project recovery_ex_MA objective minimum: 0.75
+raffinate MeOH max wt: 0.1
+extract Water max wt: 0.05
+zone1-entry Water max wt: 0.01
+```
+
+### Existing History Snapshot
+```text
+SQLite context: total_records=212, feasible_records=0
+Top feasible records by J_validated:
+- none
+Top near-feasible records by normalized violation:
+- qwen35_llamacpp_parse_search_nc_1-3-2-2_optimized_a nc=1,3,2,2 seed=optimized_a viol=0.0 prod=0.02438325837450604 purity=0.9062609885884026 rGA=2.079985481258131 rMA=0.9000009178115764 metrics_validated=0
+- qwen27b_llamacpp_parse_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=3.153672935142361e-07 prod=0.016430405998462252 purity=0.899999726342073 rGA=0.9869910200475294 rMA=0.8999999898273628 metrics_validated=0
+- qwen35_llamacpp_parse_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=1.5343631936608975e-06 prod=0.029238845121392774 purity=0.8999986190731257 rGA=1.0327417516308817 rMA=2.2034428487067825 metrics_validated=0
+- qwen35_llamacpp_parse_search_nc_2-2-2-2_reference nc=2,2,2,2 seed=reference viol=0.02914835644339142 prod=0.0031557471520927334 purity=0.8737664792009477 rGA=0.9001127468189707 rMA=0.9001010019686034 metrics_validated=0
+- qwen27b_llamacpp_parse_search_nc_1-2-3-2_reference nc=1,2,3,2 seed=reference viol=0.02925962255078487 prod=0.0031553721515132326 purity=0.8736663397042936 rGA=0.9000000198753355 rMA=0.9000000156691905 metrics_validated=0
+Most recent records:
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_tstep nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.3,F1=2.2,Fdes=1.25,Fex=0.9,Fraf=1.65,tstep=9.8)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_plus nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.4000000000000001,F1=2.3000000000000003,Fdes=1.25,Fex=0.9500000000000001,Fraf=1.7000000000000002,tstep=9.200000000000001)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference_minus nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.2,F1=2.1,Fdes=1.15,Fex=0.85,Fraf=1.4999999999999996,tstep=9.6)
+- qwen27b_llamacpp_parse_search_nc_2-1-3-2_reference nc=2,1,3,2 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.3,F1=2.2,Fdes=1.2,Fex=0.9,Fraf=1.6,tstep=9.4)
+- qwen27b_llamacpp_parse_search_nc_2-1-2-3_optimized_2f2 nc=2,1,2,3 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.6,F1=2.9,Fdes=1.6,Fex=1.2,Fraf=2.0,tstep=8.5)
+- qwen27b_llamacpp_parse_search_nc_2-1-2-3_optimized_2f1 nc=2,1,2,3 status=solver_error feasible=False prod=None purity=None rGA=None rMA=None viol=None metrics_validated=None flow(Ffeed=1.5,F1=2.7,Fdes=1.5,Fex=1.1,Fraf=1.9,tstep=8.7)
+```
+
+### NC Strategy Board
+```text
+NC strategy board (35 layouts in current library):
+Scientific screening rubric:
+- rank by observed evidence: feasibility, J_validated, productivity, violation; no prior layout preference
+- penalize repeated solver_error histories and high average walltime
+- mild penalty for extreme zone asymmetry (one zone with many more columns than others); no zone count targets assumed
+Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
+- rank=01 nc=[2, 2, 2, 2] score=109.95 attempts=30 feasible=0 solver_error=30 best_violation=3.15367e-07 best_prod=0.0292388 best_J=n/a avg_wall_s=31.2
+- rank=02 nc=[1, 3, 2, 2] score=106.99 attempts=27 feasible=0 solver_error=27 best_violation=0 best_prod=0.0243833 best_J=n/a avg_wall_s=7.6
+- rank=03 nc=[1, 2, 3, 2] score=106.40 attempts=29 feasible=0 solver_error=29 best_violation=0.0292596 best_prod=0.0178767 best_J=n/a avg_wall_s=11.5
+- rank=04 nc=[1, 1, 3, 3] score=102.45 attempts=22 feasible=0 solver_error=22 best_violation=0.221427 best_prod=0.0137983 best_J=n/a avg_wall_s=75.7
+- rank=05 nc=[1, 2, 2, 3] score=98.55 attempts=22 feasible=0 solver_error=22 best_violation=0.420643 best_prod=0.017856 best_J=n/a avg_wall_s=20.6
+- rank=06 nc=[2, 2, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=07 nc=[2, 3, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=08 nc=[2, 3, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=09 nc=[3, 1, 1, 3] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=10 nc=[3, 1, 2, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=11 nc=[3, 1, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=12 nc=[3, 2, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=13 nc=[3, 2, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=14 nc=[3, 3, 1, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=15 nc=[1, 1, 2, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=16 nc=[1, 1, 4, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=17 nc=[1, 2, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=18 nc=[1, 2, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=19 nc=[1, 4, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=20 nc=[1, 4, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=21 nc=[2, 1, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=22 nc=[2, 1, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=23 nc=[2, 4, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=24 nc=[4, 1, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=25 nc=[4, 1, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=26 nc=[4, 2, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=27 nc=[1, 1, 1, 5] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=28 nc=[1, 1, 5, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=29 nc=[1, 5, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=30 nc=[5, 1, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=31 nc=[2, 2, 1, 3] score=77.00 attempts=1 feasible=0 solver_error=1 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=1.0
+- rank=32 nc=[2, 1, 3, 2] score=76.99 attempts=15 feasible=0 solver_error=15 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.1
+- rank=33 nc=[2, 1, 2, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=34 nc=[1, 3, 1, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=35 nc=[1, 3, 3, 1] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+```
+
+### Initial Priorities
+- Feasibility-first: reduce normalized_total_violation before maximizing productivity.
+- Respect hard bounds and flow consistency: keep flows in configured bounds and treat raffinate as derived.
+- Pre-screen all 35 NC layouts by evidence and scientific prior before deep seed sweeps.
+- Screen layouts quickly at medium fidelity, then validate top candidates at high fidelity.
+- Use solver stack auto/ma97 and track termination_condition per run.
+- Use provisional metrics only as direction signals; prefer validated metrics for ranking.
+
+### Initial Proposed Simulations
+- Run each nc layout with the reference seed first to establish layout ranking under fixed conditions.
+- Only then expand to non-reference seeds for top-ranked layouts.
+- Perturb feed/desorbent/extract around best near-feasible point to reduce violation.
+- Promote top candidates to high-fidelity validation.
+
+### NC Screening Strategy
+- Screen all 35 NC layouts using the reference seed first, then expand seeds on top-ranked layouts.
+- Use NC ranking criteria: prior closeness to reference, solver-error history, best violation, and runtime cost.
+
+### Initial Risks
+- Local infeasibility from tight purity/recovery constraints.
+- Solver-status 'other' without usable primal variables.
+- Bounds clipping on internal velocities when tstep/flows are inconsistent.
+
+### Insights and Trends (Rolling)
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+
+
+### Search Iteration 01
+- timestamp_utc: 2026-04-05 00:04:54 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- scientist_a_reason: Bootstrap reference run executed to seed evidence before strict A/B/C gating (1/2).
+- scientist_a_mode: bootstrap_reference
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Bootstrap reference run bypassed Scientist_B review to avoid startup deadlock.
+- scientist_b_mode: bootstrap_reference
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Bootstrap mode active: collect baseline run evidence before relying on LLM proposal quality.
+  - Bootstrap mode active: bypass Scientist_B for initial deterministic evidence collection.
+- scientist_a_comparison_to_previous:
+  - Bootstrap reference run to establish initial baseline for data-grounded A/B/C comparisons.
+- scientist_a_evidence:
+  - No/limited prior evidence available; run deterministic reference probe first.
+- executive_decision: not_needed
+- executive_reason: Scientist_B approved candidate; executive override not needed.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_reference
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553720821459724
+  - purity_ex_meoh_free: 0.4648674909577697
+  - recovery_ex_GA: 0.9000000071663808
+  - recovery_ex_MA: 0.8999999910054494
+  - normalized_total_violation: 0.4834805755964233
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006310744227248112 CE_water=0.007264617246719565 CE_meoh=0.38143925012779833 CR_acid=0.0006903884253664152 CR_water=0.36858153440268304 CR_meoh=0.037814764478404934 source=provisional
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_reference_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0032069716497685687
+  - purity_ex_meoh_free: 0.4689131222868309
+  - recovery_ex_GA: 0.934341151193681
+  - recovery_ex_MA: 0.899999992104967
+  - normalized_total_violation: 0.47898542845355796
+  - flow: {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006413943363525078 CE_water=0.007264375836085011 CE_meoh=0.38077200855531707 CR_acid=0.0007103594164241031 CR_water=0.36795251397326884 CR_meoh=0.035763275226511605 source=provisional
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_reference_plus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553722756067996
+  - purity_ex_meoh_free: 0.873658054693161
+  - recovery_ex_GA: 0.9000000585466909
+  - recovery_ex_MA: 0.9000000480325112
+  - normalized_total_violation: 0.029268828118709973
+  - flow: {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006310744609882521 CE_water=0.0009126130596108801 CE_meoh=0.12826747585132414 CR_acid=0.0016646611618978372 CR_water=0.14337880341175094 CR_meoh=0.013821641632213569 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:05:07 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+- search_result_run: qwen35b_llamacpp_agent_search_nc_2-2-2-2_reference
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0032067462929230048
+  - purity_ex_meoh_free: 0.46888960112153827
+  - recovery_ex_GA: 0.934191175930797
+  - recovery_ex_MA: 0.8999999869658863
+  - normalized_total_violation: 0.4790115687917505
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006413492649827138 CE_water=0.007264551466499379 CE_meoh=0.38073897299616405 CR_acid=0.0007103990630092234 CR_water=0.367968156161298 CR_meoh=0.03577185068989725 source=provisional
+- search_result_run: qwen35b_llamacpp_agent_search_nc_2-2-2-2_reference_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0032069747006291966
+  - purity_ex_meoh_free: 0.46891465637323587
+  - recovery_ex_GA: 0.9343431869212089
+  - recovery_ex_MA: 0.8999999881420857
+  - normalized_total_violation: 0.47898372831630937
+  - flow: {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006413949465245445 CE_water=0.007264337997239447 CE_meoh=0.3807691844571485 CR_acid=0.0007103512696077828 CR_water=0.36795035432235323 CR_meoh=0.035762815121317106 source=provisional
+- search_result_run: qwen35b_llamacpp_agent_search_nc_2-2-2-2_reference_plus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553725526164305
+  - purity_ex_meoh_free: 0.8736581441356286
+  - recovery_ex_GA: 0.900000144670115
+  - recovery_ex_MA: 0.900000120410923
+  - normalized_total_violation: 0.029268728738190482
+  - flow: {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006310745158332076 CE_water=0.0009126123994180989 CE_meoh=0.1282674728569775 CR_acid=0.001664653521486473 CR_water=0.14337879718664384 CR_meoh=0.013821650748192443 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:05:28 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+- low_quality_recovery: scientist_b iteration=2 reason=Rejected: review must include NC strategy assessment against alternatives.
+
+### Search Iteration 03
+- timestamp_utc: 2026-04-05 00:05:31 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference_tstep
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- scientist_a_reason: Rejected: review must include NC strategy assessment against alternatives.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Rejected: review must include NC strategy assessment against alternatives.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Rejected: review must include NC strategy assessment against alternatives.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_reference_tstep
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.003206598973169338
+  - purity_ex_meoh_free: 0.46886977261909824
+  - recovery_ex_GA: 0.9340931231184263
+  - recovery_ex_MA: 0.8999999921067853
+  - normalized_total_violation: 0.47903359474901835
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - composition_ce_cr: CE_acid=0.006413198010319195 CE_water=0.0072647961467687755 CE_meoh=0.3807542758321709 CR_acid=0.0007103959183835458 CR_water=0.3679395215333736 CR_meoh=0.03577173157183772 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:05:35 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+- low_quality_recovery: scientist_b iteration=2 reason=Rejected: review must include NC strategy assessment against alternatives.
+
+### Search Iteration 03
+- timestamp_utc: 2026-04-05 00:05:42 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference_tstep
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- scientist_a_reason: Rejected: review must include NC strategy assessment against alternatives.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Rejected: review must include NC strategy assessment against alternatives.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Rejected: review must include NC strategy assessment against alternatives.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- low_quality_recovery: scientist_b iteration=4 reason=Rejected: review must include NC strategy assessment against alternatives.
+
+### Search Iteration 05
+- timestamp_utc: 2026-04-05 00:05:53 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_a_minus
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'flow': {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Rejected: review must include NC strategy assessment against alternatives.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Rejected: review must include NC strategy assessment against alternatives.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Rejected: review must include NC strategy assessment against alternatives.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen35b_llamacpp_agent_search_nc_2-2-2-2_reference_tstep
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0032065988042770193
+  - purity_ex_meoh_free: 0.4688697975291062
+  - recovery_ex_GA: 0.934093011961698
+  - recovery_ex_MA: 0.8999999911719367
+  - normalized_total_violation: 0.47903356810995235
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - composition_ce_cr: CE_acid=0.006413197672534549 CE_water=0.007264795037448948 CE_meoh=0.38075420919940095 CR_acid=0.0007103951828821986 CR_water=0.36793954917380817 CR_meoh=0.035771697168871346 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:06:18 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+- low_quality_recovery: scientist_b iteration=4 reason=Rejected: review must include NC strategy assessment against alternatives.
+
+### Search Iteration 05
+- timestamp_utc: 2026-04-05 00:06:24 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_a_minus
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'flow': {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Rejected: review must include NC strategy assessment against alternatives.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Rejected: review must include NC strategy assessment against alternatives.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Rejected: review must include NC strategy assessment against alternatives.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_optimized_a_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.017899063057901718
+  - purity_ex_meoh_free: 0.531873290278043
+  - recovery_ex_GA: 1.0800516185082027
+  - recovery_ex_MA: 0.9768202019623021
+  - normalized_total_violation: 0.40902967746884117
+  - flow: {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
+  - composition_ce_cr: CE_acid=0.007284785185485559 CE_water=0.006411682222526893 CE_meoh=0.7660410269348624 CR_acid=0.00017497015649808382 CR_water=0.9544874212378243 CR_meoh=0.04377433282633008 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:07:14 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+
+### Search Iteration 06
+- timestamp_utc: 2026-04-05 00:07:14 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_c
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'seed': {'name': 'optimized_c', 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'flow': {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'seed': {'name': 'optimized_c', 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_llamacpp_parse_search_nc_2-2-2-2_optimized_c
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.01789795099213979
+  - purity_ex_meoh_free: 0.5322584413137048
+  - recovery_ex_GA: 1.0799337709824774
+  - recovery_ex_MA: 0.9767975703643988
+  - normalized_total_violation: 0.40860173187366133
+  - flow: {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - composition_ce_cr: CE_acid=0.0072849110605673634 CE_water=0.006401881848882759 CE_meoh=0.7660784726606409 CR_acid=0.000175070757700458 CR_water=0.9544902093674973 CR_meoh=0.043788600961064954 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 00:07:53 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 30 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 22 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+
+### Search Iteration 07
+- timestamp_utc: 2026-04-05 00:07:53 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_a
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a', 'seed': {'name': 'optimized_a', 'F1': 2.6, 'Fdes': 1.4, 'Fex': 1.0, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 8.8}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a', 'flow': {'Ffeed': 1.2, 'F1': 2.6, 'Fdes': 1.4, 'Fex': 1.0, 'Fraf': 1.5999999999999996, 'tstep': 8.8}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a', 'seed': {'name': 'optimized_a', 'F1': 2.6, 'Fdes': 1.4, 'Fex': 1.0, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 8.8}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
