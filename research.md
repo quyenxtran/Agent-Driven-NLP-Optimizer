@@ -17311,3 +17311,302 @@ Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
 - Probe around run=qwen27b_smoke_test_search_nc_2-2-2-2_optimized_a_minus nc=[2, 2, 2, 2] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
 - Probe around run=qwen27b_smoke_test_search_nc_2-2-2-2_optimized_c nc=[2, 2, 2, 2] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
 - Probe around run=qwen27b_smoke_test_search_nc_2-2-2-2_optimized_b nc=[2, 2, 2, 2] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.4, 'F1': 2.5, 'Fdes': 1.4, 'Fex': 1.0, 'Fraf': 1.7999999999999998, 'tstep': 9.0}
+
+## Run: qwen27b_smoke_test_lhs
+
+- started_utc: 2026-04-05 01:50:46 UTC
+- benchmark_hours: 0.25
+- search_hours: 0.2
+- validation_hours: 0.05
+- min_probe_reference_runs: 3
+- probe_low_fidelity_enabled: True
+- probe_fidelity: nfex=5, nfet=2, ncp=1
+- finalization_hard_gate_enabled: True
+- finalization_low_fidelity_requirements: nfex<=5, nfet<=2, ncp<=1
+- ipopt_defaults: max_iter=1000, tol=1e-05, acceptable_tol=0.0001
+- solver_name: auto
+- linear_solver: ma97
+- nc_library: all
+- seed_library: notebook
+- exploratory_targets: purity=, recovery_ga=, recovery_ma=
+- project_objective_targets: purity=0.6, recovery_ga=0.75, recovery_ma=0.75
+- executive_controller: enabled=True, trigger_rejects=2, force_after=3, top_k_lock=5
+- single_scientist_mode: False
+- sqlite_db: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/artifacts/agent_runs/smb_agent_context.sqlite
+
+### Codebase Context Snapshot
+```text
+Optimization file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/optimization.py
+Model file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/model.py
+Metrics file: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/src/sembasmb/metrics.py
+Benchmark stage driver: /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/run_stage.py
+Optimization constraints: ['CE_cons', 'CR_cons', 'ExtractWater', 'PurityExMeohFree', 'PurityExMeohFree_relaxed', 'RaffMeoh', 'RaffinateConsistency', 'RecoveryExGA', 'RecoveryExGA_relaxed', 'RecoveryExMA', 'RecoveryExMA_relaxed', 'Zone1EntryWater']
+Model constraints: ['Equilibrium', 'FlowCondition', 'MassBalanceLiquid', 'MassBalanceSolid']
+Objective expression: m.obj = Objective(expr=ce_acid * m.UE * inputs.area * inputs.eb, sense=maximize)
+Flow-consistency in optimization: True
+Solver entrypoint present: True
+Metrics available in code: ['Frec', 'productivity_ex_ga_ma', 'purity_ex_meoh_free', 'purity_ex_overall', 'recovery_balance_acid', 'recovery_ex', 'recovery_raff']
+Key config fields: ['F1', 'F1_init', 'Fdes', 'Fdes_init', 'Fex', 'Fex_init', 'Ffeed', 'Ffeed_init', 'Fraf', 'Fraf_init', 'L', 'Pe']
+Benchmark stages: ['solver-check', 'reference-eval', 'nc-screen', 'flow-screen', 'optimize-layouts']
+```
+
+### Runtime Compute Snapshot
+```text
+No runtime compute metadata found in environment.
+```
+
+### Simulation Constraint Snapshot
+```text
+Flow bounds: F1 in 0.5,5.0
+Flow bounds: Ffeed in 0.5,2.5, Fdes in 0.5,2.5, Fex in 0.5,2.5, Fraf in 0.5,5.0
+tstep bounds: 8.0,12.0
+max pump flow ml/min: 2.5
+F1 max flow cap ml/min: 5.0
+exploratory purity_ex_meoh_free minimum: 0.9
+exploratory recovery_ex_GA minimum: 0.9
+exploratory recovery_ex_MA minimum: 0.9
+project purity_ex_meoh_free objective minimum: 0.6
+project recovery_ex_GA objective minimum: 0.75
+project recovery_ex_MA objective minimum: 0.75
+raffinate MeOH max wt: 0.1
+extract Water max wt: 0.05
+zone1-entry Water max wt: 0.01
+```
+
+### Existing History Snapshot
+```text
+SQLite context: total_records=229, feasible_records=0
+Top feasible records by J_validated:
+- none
+Top near-feasible records by normalized violation:
+- qwen35_llamacpp_parse_search_nc_1-3-2-2_optimized_a nc=1,3,2,2 seed=optimized_a viol=0.0 prod=0.02438325837450604 purity=0.9062609885884026 rGA=2.079985481258131 rMA=0.9000009178115764 metrics_validated=0
+- qwen27b_smoke_test_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=3.153672935142361e-07 prod=0.016430405998462252 purity=0.899999726342073 rGA=0.9869910200475294 rMA=0.8999999898273628 metrics_validated=0
+- qwen27b_llamacpp_parse_search_nc_2-2-2-2_optimized_2f1 nc=2,2,2,2 seed=optimized_2f1 viol=3.153672935142361e-07 prod=0.016430405998462252 purity=0.899999726342073 rGA=0.9869910200475294 rMA=0.8999999898273628 metrics_validated=0
+Most recent records:
+- qwen27b_smoke_test_search_nc_1-1-3-3_optimized_c nc=1,1,3,3 status=solver_error feasible=False prod=0.003050369366222038 purity=0.32333941341567163 rGA=0.8852879159144217 rMA=0.8586220861164466 viol=0.7030562050594001 metrics_validated=0 flow(Ffeed=1.2,F1=2.3,Fdes=1.3,Fex=0.9,Fraf=1.6,tstep=9.4)
+- qwen27b_smoke_test_search_nc_1-1-3-3_optimized_a_minus nc=1,1,3,3 status=solver_error feasible=False prod=0.0030511560893913396 purity=0.3236425133908887 rGA=0.8855898117301565 rMA=0.8587881627515537 viol=0.7021994579193347 metrics_validated=0 flow(Ffeed=1.1,F1=2.4,Fdes=1.3,Fex=1.0,Fraf=1.4000000000000004,tstep=9.2)
+- qwen27b_smoke_test_search_nc_1-1-3-3_reference_tstep nc=1,1,3,3 status=solver_error feasible=False prod=0.003155372057787526 purity=0.7007158384195429 rGA=0.8999999908365208 rMA=0.8999999911068334 viol=0.22142686626344776 metrics_validated=0 flow(Ffeed=1.3,F1=2.2,Fdes=1.25,Fex=0.9,Fraf=1.65,tstep=9.8)
+- qwen27b_smoke_test_search_nc_1-1-3-3_reference_plus nc=1,1,3,3 status=solver_error feasible=False prod=0.0031553720719101476 purity=0.70071587344068 rGA=0.8999999942372948 rMA=0.89999999552901 viol=0.22142681865890587 metrics_validated=0 flow(Ffeed=1.4000000000000001,F1=2.3000000000000003,Fdes=1.25,Fex=0.9500000000000001,Fraf=1.7000000000000002,tstep=9.200000000000001)
+- qwen27b_smoke_test_search_nc_1-1-3-3_reference_minus nc=1,1,3,3 status=solver_error feasible=False prod=0.003155372057768959 purity=0.7007150265356021 rGA=0.8999999908338103 rMA=0.8999999910995955 viol=0.221427768367769 metrics_validated=0 flow(Ffeed=1.2,F1=2.1,Fdes=1.15,Fex=0.85,Fraf=1.4999999999999996,tstep=9.6)
+```
+
+### NC Strategy Board
+```text
+NC strategy board (35 layouts in current library):
+Scientific screening rubric:
+- rank by observed evidence: feasibility, J_validated, productivity, violation; no prior layout preference
+- penalize repeated solver_error histories and high average walltime
+- mild penalty for extreme zone asymmetry (one zone with many more columns than others); no zone count targets assumed
+Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
+- rank=01 nc=[2, 2, 2, 2] score=109.94 attempts=41 feasible=0 solver_error=41 best_violation=3.15367e-07 best_prod=0.0292388 best_J=n/a avg_wall_s=37.0
+- rank=02 nc=[1, 3, 2, 2] score=106.99 attempts=27 feasible=0 solver_error=27 best_violation=0 best_prod=0.0243833 best_J=n/a avg_wall_s=7.6
+- rank=03 nc=[1, 2, 3, 2] score=106.40 attempts=29 feasible=0 solver_error=29 best_violation=0.0292596 best_prod=0.0178767 best_J=n/a avg_wall_s=11.5
+- rank=04 nc=[1, 1, 3, 3] score=102.46 attempts=28 feasible=0 solver_error=28 best_violation=0.221427 best_prod=0.0137983 best_J=n/a avg_wall_s=67.0
+- rank=05 nc=[1, 2, 2, 3] score=98.55 attempts=22 feasible=0 solver_error=22 best_violation=0.420643 best_prod=0.017856 best_J=n/a avg_wall_s=20.6
+- rank=06 nc=[2, 2, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=07 nc=[2, 3, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=08 nc=[2, 3, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=09 nc=[3, 1, 1, 3] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=10 nc=[3, 1, 2, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=11 nc=[3, 1, 3, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=12 nc=[3, 2, 1, 2] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=13 nc=[3, 2, 2, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=14 nc=[3, 3, 1, 1] score=97.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=15 nc=[1, 1, 2, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=16 nc=[1, 1, 4, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=17 nc=[1, 2, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=18 nc=[1, 2, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=19 nc=[1, 4, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=20 nc=[1, 4, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=21 nc=[2, 1, 1, 4] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=22 nc=[2, 1, 4, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=23 nc=[2, 4, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=24 nc=[4, 1, 1, 2] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=25 nc=[4, 1, 2, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=26 nc=[4, 2, 1, 1] score=95.50 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=27 nc=[1, 1, 1, 5] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=28 nc=[1, 1, 5, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=29 nc=[1, 5, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=30 nc=[5, 1, 1, 1] score=94.00 attempts=0 feasible=0 solver_error=0 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=0.0
+- rank=31 nc=[2, 2, 1, 3] score=77.00 attempts=1 feasible=0 solver_error=1 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=1.0
+- rank=32 nc=[2, 1, 3, 2] score=76.99 attempts=15 feasible=0 solver_error=15 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.1
+- rank=33 nc=[2, 1, 2, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=34 nc=[1, 3, 1, 3] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+- rank=35 nc=[1, 3, 3, 1] score=76.99 attempts=22 feasible=0 solver_error=22 best_violation=n/a best_prod=n/a best_J=n/a avg_wall_s=3.9
+```
+
+### Initial Priorities
+- Feasibility-first: reduce normalized_total_violation before maximizing productivity.
+- Respect hard bounds and flow consistency: keep flows in configured bounds and treat raffinate as derived.
+- Pre-screen all 35 NC layouts by evidence and scientific prior before deep seed sweeps.
+- Screen layouts quickly at medium fidelity, then validate top candidates at high fidelity.
+- Use solver stack auto/ma97 and track termination_condition per run.
+- Use provisional metrics only as direction signals; prefer validated metrics for ranking.
+
+### Initial Proposed Simulations
+- Run each nc layout with the reference seed first to establish layout ranking under fixed conditions.
+- Only then expand to non-reference seeds for top-ranked layouts.
+- Perturb feed/desorbent/extract around best near-feasible point to reduce violation.
+- Promote top candidates to high-fidelity validation.
+
+### NC Screening Strategy
+- Screen all 35 NC layouts using the reference seed first, then expand seeds on top-ranked layouts.
+- Use NC ranking criteria: prior closeness to reference, solver-error history, best violation, and runtime cost.
+
+### Initial Risks
+- Local infeasibility from tight purity/recovery constraints.
+- Solver-status 'other' without usable primal variables.
+- Bounds clipping on internal velocities when tstep/flows are inconsistent.
+
+### Insights and Trends (Rolling)
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 41 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+| 2,2,1,3 | 1 | 0 |  |  |  |
+
+
+### Search Iteration 01
+- timestamp_utc: 2026-04-05 01:50:53 UTC
+- candidate_nc: [1, 1, 2, 4]
+- candidate_seed: reference
+- scientist_a_proposed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- effective_task_after_policy: {'nc': [1, 1, 2, 4], 'seed_name': 'reference', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- scientist_a_reason: Bootstrap reference run executed to seed evidence before strict A/B/C gating (1/2).
+- scientist_a_mode: bootstrap_reference
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Bootstrap reference run bypassed Scientist_B review to avoid startup deadlock.
+- scientist_b_mode: bootstrap_reference
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Bootstrap mode active: collect baseline run evidence before relying on LLM proposal quality.
+  - Bootstrap mode active: bypass Scientist_B for initial deterministic evidence collection.
+- scientist_a_comparison_to_previous:
+  - Bootstrap reference run to establish initial baseline for data-grounded A/B/C comparisons.
+- scientist_a_evidence:
+  - No/limited prior evidence available; run deterministic reference probe first.
+- executive_decision: not_needed
+- executive_reason: Scientist_B approved candidate; executive override not needed.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553720576904553
+  - purity_ex_meoh_free: 0.7029788173839776
+  - recovery_ex_GA: 0.8999999909236395
+  - recovery_ex_MA: 0.8999999909930654
+  - normalized_total_violation: 0.21891244522146402
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.006310744178401327 CE_water=0.0026664028171308404 CE_meoh=0.11258832392043598 CR_acid=0.00602609417399685 CR_water=0.1230380823174652 CR_meoh=0.014034604402486132 source=provisional
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.003155372056680999
+  - purity_ex_meoh_free: 0.7029781783613743
+  - recovery_ex_GA: 0.899999990716813
+  - recovery_ex_MA: 0.8999999906442939
+  - normalized_total_violation: 0.21891315586390978
+  - flow: {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.0063107441763819785 CE_water=0.0026664109767013983 CE_meoh=0.11258814915140967 CR_acid=0.00602623298082345 CR_water=0.12303819276612458 CR_meoh=0.014034638321966253 source=provisional
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_plus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.003155372057256051
+  - purity_ex_meoh_free: 0.7029794575232996
+  - recovery_ex_GA: 0.8999999908476733
+  - recovery_ex_MA: 0.8999999908331703
+  - normalized_total_violation: 0.2189117342176187
+  - flow: {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {}
+  - composition_ce_cr: CE_acid=0.0063107441775322355 CE_water=0.002666394642094047 CE_meoh=0.1125884986221289 CR_acid=0.006025955254567013 CR_water=0.12303797177888458 CR_meoh=0.014034570444114103 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 01:51:08 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 41 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,1,2,4 | 3 | 0 | 0.2189117342176187 | 0.0031553720576904553 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+- low_quality_recovery: scientist_b iteration=2 reason=Rejected: review must include explicit flowrate audit across prior runs.
+
+### Search Iteration 03
+- timestamp_utc: 2026-04-05 01:51:26 UTC
+- candidate_nc: [1, 1, 2, 4]
+- candidate_seed: reference_tstep
+- scientist_a_proposed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- effective_task_after_policy: {'nc': [1, 1, 2, 4], 'seed_name': 'reference_tstep', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}}
+- scientist_b_reviewed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- scientist_a_reason: Rejected: review must include explicit flowrate audit across prior runs.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Rejected: review must include explicit flowrate audit across prior runs.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Rejected: review must include explicit flowrate audit across prior runs.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_tstep
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553720608825135
+  - purity_ex_meoh_free: 0.7029792057689761
+  - recovery_ex_GA: 0.8999999918272065
+  - recovery_ex_MA: 0.8999999918890577
+  - normalized_total_violation: 0.21891201168306648
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - composition_ce_cr: CE_acid=0.006310744184693181 CE_water=0.0026663978600561648 CE_meoh=0.11258803085944939 CR_acid=0.006026181811166669 CR_water=0.12303807700589468 CR_meoh=0.014034621148298709 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 01:51:34 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 41 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,1,2,4 | 4 | 0 | 0.2189117342176187 | 0.0031553720608825135 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |

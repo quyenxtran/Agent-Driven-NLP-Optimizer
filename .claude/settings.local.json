@@ -57,7 +57,11 @@
       "Bash(git commit -m 'Enforce critical constraint: total column count must equal 8:*)",
       "Bash(git commit -m 'Update Plan B documentation with constraint enforcement status:*)",
       "Bash(grep -n \"def parse_nc_library\" /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/*.py)",
-      "Bash(git commit -m 'Phase 3: Integrate LHS ranking with agent configuration selection:*)"
+      "Bash(git commit -m 'Phase 3: Integrate LHS ranking with agent configuration selection:*)",
+      "Bash(sbatch slurm/pace_smb_27b_smoke_test_lhs.slurm)",
+      "Bash(sbatch slurm/pace_smb_27b_lhs_only_med.slurm)",
+      "Bash(sbatch slurm/pace_smb_27b_bo_gp_baseline.slurm)",
+      "Bash(squeue -u qtran47 --format=\"%.10i %.20j %.10T %.5C %.10m %.10M\")"
     ]
   }
 }
