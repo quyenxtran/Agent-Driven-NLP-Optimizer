@@ -35,8 +35,9 @@ export PATH="$IPOPT_BIN_DIR:${REPO_ROOT}/.venv/bin:${PATH}"
 export LD_LIBRARY_PATH="$IPOPT_LIB_DIR:$OPENBLAS_LIBDIR:$METIS_LIBDIR:${LD_LIBRARY_PATH:-}"
 export SMB_HSL_LIB="$IPOPT_LIB_DIR/libcoinhsl.so"
 
-# OpenMP multi-threading for MA97
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-8}}"
+# Parallel configuration: 4 workers × 2 MA97 threads each = 8 CPUs total
+# Each worker runs seeds sequentially but 4 workers run in parallel
+export OMP_NUM_THREADS=2  # Each worker gets 2 threads for MA97
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=spread
 export OMP_PLACES=cores
@@ -63,31 +64,32 @@ echo "Time: 20 hours (1200 minutes, includes Stage 1 + Stage 2)"
 echo ""
 echo "Purpose: Generate comprehensive screening data for Phase 3 strategy comparison"
 echo ""
-echo "Two-Stage Screening per NC (100 seeds for proper 5D coverage):"
-echo "  Stage 1: Quick feasibility check (all seeds, ~10s each)"
-echo "    • Ultra-low fidelity (nfex=3, nfet=1, ncp=1)"
-echo "    • Very relaxed constraints (purity≥0.05) - just check if feasible"
-echo "    • Filter out clearly infeasible seeds"
+echo "Parallel Low-Fidelity Optimization (100 seeds per NC, 5D coverage):"
+echo "  Process:"
+echo "    • Generate 100 LHS seeds across 5-D flow space"
+echo "    • Bounds: tstep[8-12], ffeed[0.5-2.5], fdes[0.5-2.5], fex[0.5-2.5], f1[0.5-5.0]"
+echo "    • Run low-fidelity optimization (nfex=4, nfet=2, ncp=1)"
+echo "    • Constraints: purity≥0.15, recovery≥0.15"
 echo ""
-echo "  Stage 2: Full optimization (only feasible seeds, ~50s each)"
-echo "    • Standard low-fidelity (nfex=4, nfet=2, ncp=1)"
-echo "    • Standard constraints (purity≥0.15, recovery≥0.15)"
-echo "    • Keep all valid results for Phase 3"
+echo "  Parallelization:"
+echo "    • 4 workers in ProcessPoolExecutor (Python multiprocessing)"
+echo "    • Each worker: OMP_NUM_THREADS=2 (2 CPUs per worker)"
+echo "    • Result: 4 seeds optimize simultaneously"
+echo "    • Total CPUs used: 4 workers × 2 threads = 8 CPUs"
 echo ""
 echo "Expected Output:"
-echo "  • Stage 1: Filter 3100 seeds (~40-50% typically feasible)"
-echo "  • Stage 2: Optimize ~1500-1850 feasible seeds"
-echo "  • Expected ~95%+ success rate on feasible seeds"
+echo "  • ~31 NCs × 100 seeds optimizations at low fidelity"
+echo "  • Expected ~95%+ success rate"
+echo "  • ~3,100 total seed results for Phase 3 strategies"
 echo "  • Serves as foundation for all Phase 3 strategies"
-echo "  • Better space coverage with efficient computation"
-echo "  • Estimated runtime: 18-22 hours (40-50% faster than full optimization)"
+echo "  • Estimated runtime: ~12 hours (4x speedup: 47 hours → 12 hours)"
 echo ""
 
-echo "Running Phase 2 with TWO-STAGE screening..."
-echo "Stage 1: Quick feasibility check on all seeds (~10s each)"
-echo "Stage 2: Full optimization only on feasible seeds (~50s each)"
-echo "Expected speedup: 40-50% vs full optimization"
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_screening_two_stage \
+echo "Running Phase 2 with PARALLEL seed optimization..."
+echo "Strategy: 4 workers in parallel, each with OMP_NUM_THREADS=2"
+echo "Configuration: 4 seeds optimize simultaneously (4 × 2 threads = 8 CPUs)"
+echo "Expected speedup: 4x (47 hours → ~12 hours)"
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_parallel_seeds \
   --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
          "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
          "[1,1,1,5]" "[1,1,5,1]" "[1,5,1,1]" "[5,1,1,1]" "[1,2,2,3]" \
@@ -98,6 +100,7 @@ echo "Expected speedup: 40-50% vs full optimization"
   --n-seeds 100 \
   --artifact-dir "$ARTIFACT_DIR" \
   --timeout 120 \
+  --n-workers 4 \
   --verbose
 
 EXIT_CODE=$?
