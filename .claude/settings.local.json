@@ -56,7 +56,8 @@
       "Bash(python -m benchmarks.physics_filter)",
       "Bash(git commit -m 'Enforce critical constraint: total column count must equal 8:*)",
       "Bash(git commit -m 'Update Plan B documentation with constraint enforcement status:*)",
-      "Bash(grep -n \"def parse_nc_library\" /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/*.py)"
+      "Bash(grep -n \"def parse_nc_library\" /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/*.py)",
+      "Bash(git commit -m 'Phase 3: Integrate LHS ranking with agent configuration selection:*)"
     ]
   }
 }
