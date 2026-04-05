@@ -698,73 +698,41 @@ def scientist_b_review(
             Effective bounded candidate (actual flows to be run):
             {json.dumps(effective_task_brief, separators=(",", ":"))}
 
-            ## Example valid review responses:
+            ## Example valid review responses (exactly this format):
 
-            ### Example 1: APPROVE with concerns
+            ### Example 1: APPROVE
             {{
               "decision": "approve",
-              "reason": "Explores F1=2.0 (vs reference 2.5). R-1 at [2,2,2,2] F1=2.5 achieved J=45.2, purity=0.61.",
+              "reason": "Explores F1=2.0 vs baseline 2.5. Run smb_qwen_run_0047 achieved J=45.2, purity=0.61. This variant tests selectivity hypothesis.",
               "evidence_refs": ["smb_qwen_run_0047"],
-              "comparison_assessment": ["vs R-1 [2,2,2,2] F1=2.5: ΔF1=-0.5, expect ΔJ≈-5%, Δpurity≈+2%"],
-              "last_two_run_audit": ["R-1: smb_qwen_run_0047 [2,2,2,2] feasible=yes", "R-2: other"],
-              "flowrate_audit": ["ΔFfeed=-0.15, ΔF1=-0.50, ΔFdes=-0.30"],
-              "delta_audit": ["vs R-1: Δprod=-4.2%, Δpurity=+1.8%"],
-              "column_topology_audit": ["vs R-1: nc=[2,2,2,2], ΔZ1=-0.8cm"],
-              "physics_audit": "Zone I: balanced OK. Zone II: Fdes×c balanced.",
-              "counterproposal_run": {{"nc": [2,2,2,2], "flow_adjustments": {{"Ffeed": 0.0}}, "expected_metric_effect": {{"delta_productivity": 0.0}}, "physics_justification": "test"}},
-              "nc_strategy_assessment": ["[2,2,2,2] explored well"],
-              "compute_assessment": "~100s",
-              "counterarguments": ["risk"],
-              "required_checks": ["check balance"],
-              "priority_updates": ["H3 approved"],
-              "risk_flags": ["throughput_risk"]
+              "comparison_assessment": ["vs smb_qwen_run_0047: ΔF1=-0.5 should reduce J~5% but improve purity~2%"],
+              "physics_audit": "Zone I mass balance OK. Zone II desorbent balanced. Expected selectivity improvement from tighter F1.",
+              "counterproposal_run": {{"nc": [2,2,2,2], "flow_adjustments": {{"Ffeed": 0.0, "F1": -0.5, "Fdes": -0.3, "Fex": 0.0, "Fraf": 0.0, "tstep": 0.0}}, "expected_metric_effect": {{"delta_productivity": -4.2, "delta_purity": 1.8, "delta_recovery_ga": 0.5, "delta_recovery_ma": -0.3, "delta_violation": 0.0}}, "physics_justification": "Lower F1 improves selectivity while maintaining mass balance."}}
             }}
 
             ### Example 2: REJECT
             {{
               "decision": "reject",
-              "reason": "Duplicate of R-1. Same nc=[2,2,2,2], already tested.",
+              "reason": "Duplicate of smb_qwen_run_0047 with same nc=[2,2,2,2] and F1=2.5. No new information.",
               "evidence_refs": ["smb_qwen_run_0047"],
-              "comparison_assessment": ["vs R-1: identical config"],
-              "last_two_run_audit": ["R-1: smb_qwen_run_0047 [2,2,2,2]", "R-2: other"],
-              "flowrate_audit": ["no change"],
-              "delta_audit": ["no change"],
-              "column_topology_audit": ["identical"],
-              "physics_audit": "Same as R-1.",
-              "counterproposal_run": {{"nc": [2,2,1,3], "flow_adjustments": {{"F1": -0.30}}, "expected_metric_effect": {{"delta_productivity": -2.0}}, "physics_justification": "different topology"}},
-              "nc_strategy_assessment": ["[2,2,2,2] saturated"],
-              "compute_assessment": "skip",
-              "counterarguments": ["duplicate"],
-              "required_checks": [],
-              "priority_updates": ["penalize duplicates"],
-              "risk_flags": ["duplicate"]
+              "comparison_assessment": ["vs smb_qwen_run_0047: identical configuration"],
+              "physics_audit": "Same topology and flows as prior run. No novel physics to explore.",
+              "counterproposal_run": {{"nc": [2,2,1,3], "flow_adjustments": {{"Ffeed": 0.0, "F1": -0.3, "Fdes": 0.2, "Fex": -0.1, "Fraf": 0.0, "tstep": 0.0}}, "expected_metric_effect": {{"delta_productivity": -2.0, "delta_purity": 4.0, "delta_recovery_ga": 0.0, "delta_recovery_ma": 5.0, "delta_violation": 0.0}}, "physics_justification": "Different topology [2,2,1,3] with reduced F1 should improve purity."}}
             }}
 
-            CRITICAL: Your response MUST be valid JSON. Return ONLY JSON, no markdown, no explanation.
-
-            Respond with this JSON (fill every field — no placeholders):
+            CRITICAL: Return ONLY this JSON (no markdown, no explanation, fill all 6 fields):
             {{
               "decision": "approve" or "reject",
-              "reason": "<1-2 sentences citing run_name and numeric evidence>",
+              "reason": "<1-2 sentences citing evidence and run_name>",
               "evidence_refs": ["<run_name from evidence pack>"],
-              "comparison_assessment": ["<named run vs proposal: metric delta + interpretation>", "..."],
-              "last_two_run_audit": ["<R-1: run_name feasible=? prod=? purity=? viol=?>", "<R-2: ...>"],
-              "flowrate_audit": ["<ΔFfeed=..., ΔF1=..., ΔFdes=..., ΔFex=..., ΔFraf=..., Δtstep=...>"],
-              "delta_audit": ["<vs R-1: Δprod=..., Δpurity=..., ΔrGA=..., ΔrMA=..., Δviol=...>", "<vs R-2: ...>", "<vs counterproposal: ...>"],
-              "column_topology_audit": ["<vs R-1: nc=[...]->[...], ΔZ1..ΔZ4>", "<vs R-2: ...>", "<vs counterproposal topology>"],
-              "physics_audit": "<zone I-IV mass balance / selectivity critique>",
+              "comparison_assessment": ["<named run vs proposal with metric delta>", "..."],
+              "physics_audit": "<zone I-IV mass balance and selectivity critique>",
               "counterproposal_run": {{
                 "nc": [a,b,c,d],
                 "flow_adjustments": {{"Ffeed": 0.0, "F1": 0.0, "Fdes": 0.0, "Fex": 0.0, "Fraf": 0.0, "tstep": 0.0}},
                 "expected_metric_effect": {{"delta_productivity": 0.0, "delta_purity": 0.0, "delta_recovery_ga": 0.0, "delta_recovery_ma": 0.0, "delta_violation": 0.0}},
                 "physics_justification": "<why this counterproposal is better>"
-              }},
-              "nc_strategy_assessment": ["<candidate nc vs alternatives with evidence>", "..."],
-              "compute_assessment": "<budget/time assessment>",
-              "counterarguments": ["<strongest objection>", "..."],
-              "required_checks": ["<check before trusting result>", "..."],
-              "priority_updates": ["..."],
-              "risk_flags": ["..."]
+              }}
             }}
 
             === CONTEXT ===

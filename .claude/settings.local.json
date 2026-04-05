@@ -43,7 +43,11 @@
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
       "Bash(squeue -u qtran47)",
-      "Bash(python -m py_compile benchmarks/agent_json_parser.py benchmarks/agent_scientists.py benchmarks/agent_db.py)"
+      "Bash(python -m py_compile benchmarks/agent_json_parser.py benchmarks/agent_scientists.py benchmarks/agent_db.py)",
+      "Bash(python3)",
+      "Bash(scancel 6276711 6276712)",
+      "Bash(squeue -u qtran47 --format=\"%.7i %.20j %.2t\")",
+      "Bash(python -m py_compile benchmarks/agent_scientists.py)"
     ]
   }
 }
