@@ -143,11 +143,14 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 | Diagnostic rate | 40% | <30% | <20% |
 | Convergence | Slow exploration | Guided by heuristics | 50-60 iter/11h |
 
-### 4.3 Validation Checkpoint ⏳ PENDING
-- [ ] LHS smoke test passes (31 configs, 15 min)
-- [ ] Physics filtering working (100% pass)
-- [ ] Agent integration complete
-- [ ] Configuration exploration covers all 31 valid topologies
+### 4.3 Validation Checkpoint ⏳ READY TO SUBMIT
+- [✅] Created smoke test script: `slurm/pace_smb_27b_smoke_test_lhs.slurm`
+- [✅] Configured with --use-lhs-ranking flag
+- [✅] Physics filtering: 31/31 valid (100% pass)
+- [✅] Agent integration complete (rank_configs_with_lhs)
+- [ ] Run smoke test (submit job)
+- [ ] Verify configuration exploration
+- [ ] Approve for Phase 5
 
 ---
 
@@ -200,19 +203,21 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 - [✅] Score all 31 candidates
 - [✅] Commit to main (7d65ab3)
 
-### Phase 3: Agent Integration
-- [ ] Modify `benchmarks/agent_runner.py`
-- [ ] Add `initialize_config_shortlist()` function
-- [ ] Update initial priority plan logic
-- [ ] Test: LHS ordering vs agent ranking
-- [ ] Commit to main
+### Phase 3: Agent Integration ✅ COMPLETE
+- [✅] Modify `benchmarks/agent_policy.py`
+- [✅] Add `rank_configs_with_lhs()` function
+- [✅] Integrate with `build_search_tasks()` to re-rank NC library
+- [✅] Add `--use-lhs-ranking` flag to `benchmarks/agent_runner.py`
+- [✅] Fallback to default ranking if LHS import fails
+- [✅] Commit to main (89bf858)
 
-### Phase 4: Smoke Test
-- [ ] Create `slurm/pace_smb_27b_smoke_lhs.slurm`
-- [ ] Submit and monitor 5-min test
+### Phase 4: Smoke Test ⏳ READY TO SUBMIT
+- [✅] Create `slurm/pace_smb_27b_smoke_test_lhs.slurm`
+- [✅] Enabled --use-lhs-ranking flag
+- [ ] Submit and monitor 15-min test
 - [ ] Verify no crashes
 - [ ] Check coverage metrics
-- [ ] Approve for full run
+- [ ] Approve for Phase 5
 
 ### Phase 5: Full Benchmark
 - [ ] Create `slurm/pace_smb_27b_full_with_lhs.slurm`
@@ -239,10 +244,10 @@ def initialize_config_shortlist(lhs_configs, physics_filter, agent_priority_plan
 |-------|------|--------|
 | LHS sampling | 20 min | ✅ Complete (31 configs enumerated) |
 | Physics filtering | 25 min | ✅ Complete (sum=8 constraint enforced) |
-| Agent integration | 20 min | 🔲 In progress |
-| Smoke test (15 min) | 10 min | 🔲 Pending |
-| Full benchmark (27B + 35B) | 32h | 🔲 Queued |
-| **TOTAL** | **~33h** | 🔲 Phase 3 active |
+| Agent integration | 20 min | ✅ Complete (LHS ranking integrated) |
+| Smoke test (15 min) | 10 min | ⏳ Ready to submit (Phase 4) |
+| Full benchmark (27B + 35B) | 32h | 🔲 Pending (Phase 5) |
+| **TOTAL** | **~33h** | ⏳ Phase 4 ready, awaiting approval |
 
 ---
 
