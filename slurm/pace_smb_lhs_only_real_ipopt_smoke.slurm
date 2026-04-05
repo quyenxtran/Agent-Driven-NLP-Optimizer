@@ -61,9 +61,11 @@ echo "Fidelity: Low (nfex=5, nfet=2, ncp=1)"
 echo "Config space: 31 valid (sum=8)"
 echo ""
 echo "Running LHS-only with real IPOPT smoke test..."
+echo "Development constraints: purity ≥ 0.20, recovery ≥ 0.20 (for BO training data)"
+echo ""
 
 "${REPO_ROOT}/.venv/bin/python" -m benchmarks.lhs_only_runner \
-  --run-name "lhs_only_real_ipopt_smoke" \
+  --run-name "lhs_only_real_ipopt_smoke_dev" \
   --artifact-dir "$ARTIFACT_DIR" \
   --max-iterations 31 \
   --solver-name "auto" \

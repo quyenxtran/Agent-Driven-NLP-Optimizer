@@ -1,10 +1,9 @@
 #!/bin/bash
-# Phase 2: Optimization on Top NCs (Real Constrained Optimization)
-# After Phase 1 smoke tests identify promising NCs, optimize flows for each
-# Constraints: purity ≥ 0.70, recovery_GA ≥ 0.90, recovery_MA ≥ 0.90
-# Objective: maximize productivity
+# Phase 5: Final Validation (Strict Constraints)
+# After Phase 1-4 exploration with loose constraints,
+# validate best candidates with STRICT production constraints
 
-#SBATCH --job-name=smb-phase2-opt
+#SBATCH --job-name=smb-phase5-valid
 #SBATCH -A gts-sn73
 #SBATCH --qos=inferno
 #SBATCH -p cpu-container
@@ -47,78 +46,66 @@ export NUMEXPR_NUM_THREADS=1
 export PYTHONUNBUFFERED=1
 
 LOG_DIR="${LOG_DIR:-$REPO_ROOT/logs}"
-ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase2_optimization}"
+ARTIFACT_DIR="${ARTIFACT_DIR:-$REPO_ROOT/artifacts/phase5_final_validation}"
 mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "PHASE 2: CONSTRAINED OPTIMIZATION (Real Optima Finder)"
+echo "PHASE 5: FINAL VALIDATION (Strict Production Constraints)"
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo "Job: ${SLURM_JOB_ID:-local}"
 echo "CPUs: ${SLURM_CPUS_PER_TASK:-8} (MA97 multi-threaded)"
 echo "Memory: 32G"
 echo "Time: 60 minutes"
 echo ""
-echo "Purpose: Optimize flow variables for each NC under LOOSE constraints (for BO development)"
+echo "Purpose: Validate Phase 4 best candidates with STRICT constraints"
+echo "This is the final filter for true global optimum"
 echo ""
-echo "DEVELOPMENT Constraints (for BO training):"
-echo "  - Purity (extract, MeOH-free) ≥ 0.20"
-echo "  - Recovery (GA) ≥ 0.20"
-echo "  - Recovery (MA) ≥ 0.20"
-echo "  - Max pump flow ≤ 3.0 ml/min"
-echo ""
-echo "FINAL Constraints (for validation, applied later):"
+echo "STRICT PRODUCTION Constraints:"
 echo "  - Purity (extract, MeOH-free) ≥ 0.70"
 echo "  - Recovery (GA) ≥ 0.90"
 echo "  - Recovery (MA) ≥ 0.90"
 echo "  - Max pump flow ≤ 3.0 ml/min"
 echo ""
-echo "Objective: Maximize productivity (J)"
-echo ""
-echo "Data collection for BO surrogates:"
-echo "  - Collects (NC, flows) → (productivity, purity, recovery)"
-echo "  - BO models will fit on these outputs"
+echo "Process:"
+echo "  1. Extract best NC from Phase 4 (agent optimization)"
+echo "  2. Run optimization with STRICT constraints"
+echo "  3. Compare vs Phase 4 result (loose constraints)"
+echo "  4. Report global optimum"
 echo ""
 
-# Top NCs from Phase 1 (will be populated after smoke tests)
-# Evaluate top 5-10 NCs with real optimization
-TOP_NCS=(
-  "[1,1,2,4]"
+# Top candidates from Phase 4 (to be populated after agent exploration)
+# After Phase 4, extract best NC and flow settings
+TOP_CANDIDATES=(
   "[2,2,2,2]"
-  "[1,1,3,3]"
   "[1,2,2,3]"
   "[2,1,2,3]"
-  "[1,3,2,2]"
-  "[3,1,2,2]"
-  "[2,3,1,2]"
-  "[3,2,1,2]"
-  "[4,1,1,2]"
 )
 
-echo "Evaluating ${#TOP_NCS[@]} top-ranked NCs with optimization..."
+echo "Validating ${#TOP_CANDIDATES[@]} best candidates under STRICT constraints..."
 echo ""
 
-RESULTS_DIR="${ARTIFACT_DIR}/optimization_runs"
+RESULTS_DIR="${ARTIFACT_DIR}/strict_validation_runs"
 mkdir -p "$RESULTS_DIR"
 
-for i in "${!TOP_NCS[@]}"; do
-  NC="${TOP_NCS[$i]}"
+for i in "${!TOP_CANDIDATES[@]}"; do
+  NC="${TOP_CANDIDATES[$i]}"
   ITER=$((i + 1))
 
-  echo "[Phase 2 Iter ${ITER}/${#TOP_NCS[@]}] Optimizing NC=$NC"
+  echo "[Phase 5 Iter ${ITER}/${#TOP_CANDIDATES[@]}] STRICT validation of NC=$NC"
 
   "${REPO_ROOT}/.venv/bin/python" -m benchmarks.run_stage \
     --stage optimize-layouts \
-    --run-name "phase2_opt_nc_${NC}_dev" \
+    --run-name "phase5_strict_valid_nc_${NC}" \
     --artifact-dir "$RESULTS_DIR" \
     --nc "$NC" \
     --solver-name "auto" \
     --linear-solver "ma97" \
-    --nfex 6 \
-    --nfet 3 \
+    --nfex 10 \
+    --nfet 5 \
     --ncp 2 \
-    --purity-min 0.20 \
-    --recovery-ga-min 0.20 \
-    --recovery-ma-min 0.20 \
+    --purity-min 0.70 \
+    --recovery-ga-min 0.90 \
+    --recovery-ma-min 0.90 \
     --max-pump-flow 3.0 \
     --tee 2>&1 | tail -20
 
@@ -126,18 +113,23 @@ for i in "${!TOP_NCS[@]}"; do
 done
 
 echo "═══════════════════════════════════════════════════════════════════════════"
-echo "✅ PHASE 2 OPTIMIZATION COMPLETE"
+echo "✅ PHASE 5 FINAL VALIDATION COMPLETE"
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo ""
 echo "Results:"
 echo "  Artifacts: $RESULTS_DIR"
-echo "  Optimized flows for ${#TOP_NCS[@]} NC configurations"
-echo "  Data ready for BO surrogate training:"
-echo "    - Productivity"
-echo "    - Purity"
-echo "    - Recovery"
+echo "  Validated ${#TOP_CANDIDATES[@]} candidates with STRICT constraints"
+echo "  Fidelity: HIGH (nfex=10, nfet=5, ncp=2)"
 echo ""
-echo "Next: Train BO surrogates (GP, DNN, PINN) on collected data"
+echo "Global Optimum: Best result under STRICT constraints"
+echo "  (compare Phase 4 loose-constraint optimum vs Phase 5 strict validation)"
+echo ""
+echo "Summary:"
+echo "  Phase 1: Baseline eval at fixed flows (loose)"
+echo "  Phase 2: Optimization with loose constraints"
+echo "  Phase 3: BO surrogates trained on loose data"
+echo "  Phase 4: Agent exploration with loose constraints"
+echo "  Phase 5: FINAL strict-constraint validation ← YOU ARE HERE"
 echo ""
 
 exit 0
