@@ -66,7 +66,13 @@
       "Bash(sbatch slurm/pace_smb_phase2_lhs_seeding.slurm)",
       "Bash(chmod +x /storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/scripts/check_and_summarize_results.sh)",
       "Read(//storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/**)",
-      "Bash(bash scripts/check_and_summarize_results.sh)"
+      "Bash(bash scripts/check_and_summarize_results.sh)",
+      "Bash(/storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/scripts/check_and_summarize_results.sh)",
+      "Bash(ls -lh frontier_results/interaction_test_without/reports/hybrid_gatv2_svm*)",
+      "Bash([[ -f frontier_results/interaction_test_without/reports/hybrid_gatv2_svm_loao_per_acid_nested_tuned.csv ]])",
+      "Bash(python scripts/compare_interaction_features_impact.py)",
+      "Bash(tee FINAL_COMPARISON_RESULTS.txt)",
+      "Bash(git commit -m 'Add final experiment summary and comparison results:*)"
     ]
   }
 }

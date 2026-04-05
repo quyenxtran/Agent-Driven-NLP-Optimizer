@@ -38,19 +38,26 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
 def generate_lhs_seeds(n_seeds: int = 100) -> List[Dict[str, float]]:
-    """Generate N-D Latin Hypercube samples for flow space."""
-    var_names = ["tstep", "ffeed", "fdes", "fex", "f1"]
-    bounds = [(8.0, 12.0), (0.5, 2.5), (0.5, 2.5), (0.5, 2.5), (0.5, 5.0)]
+    """Generate N-D Latin Hypercube samples for flow space.
 
-    sampler = qmc.LatinHypercube(d=5, seed=42)
+    Only sample independent variables (tstep, ffeed, fdes, fex).
+    Derive F1 from mass balance: F1 = Ffeed + (Fdes + Fex - Ffeed) = Fdes + Fex
+    This ensures all flow combinations are physically feasible.
+    """
+    var_names = ["tstep", "ffeed", "fdes", "fex"]
+    bounds = [(8.0, 12.0), (0.5, 2.5), (0.5, 2.5), (0.5, 2.5)]
+
+    sampler = qmc.LatinHypercube(d=4, seed=42)
     samples = sampler.random(n=n_seeds)
 
     seeds = []
     for sample in samples:
         seed = {
             var_names[i]: bounds[i][0] + sample[i] * (bounds[i][1] - bounds[i][0])
-            for i in range(5)
+            for i in range(4)
         }
+        # Derive F1 from mass balance: F1 = Fdes + Fex
+        seed['f1'] = seed['fdes'] + seed['fex']
         seeds.append(seed)
 
     return seeds
