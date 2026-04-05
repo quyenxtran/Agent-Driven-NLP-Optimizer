@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=08:00:00
+#SBATCH --time=14:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -81,8 +81,8 @@ echo "  • Estimated runtime: 4-6 hours (100 opt/NC × 31 NCs × ~90s each)"
 echo ""
 
 echo "Running Phase 2 with LHS seeding (100 seeds per NC for 5D coverage)..."
-echo "Using DIRECT optimization (no subprocess overhead)"
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_lhs_seeding_direct \
+echo "Using subprocess with extended timeout (300s per seed optimization)"
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_lhs_seeding \
   --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
          "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
          "[1,1,1,5]" "[1,1,5,1]" "[1,5,1,1]" "[5,1,1,1]" "[1,2,2,3]" \
@@ -94,6 +94,7 @@ echo "Using DIRECT optimization (no subprocess overhead)"
   --artifact-dir "$ARTIFACT_DIR" \
   --solver-name "ipopt" \
   --linear-solver "ma97" \
+  --timeout 300 \
   --verbose
 
 EXIT_CODE=$?

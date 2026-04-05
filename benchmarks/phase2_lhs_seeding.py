@@ -213,6 +213,7 @@ def run_optimization(
     artifact_dir: str,
     solver_name: str = "auto",
     linear_solver: str = "ma97",
+    timeout: int = 300,
     verbose: bool = True,
 ) -> Dict:
     """
@@ -255,7 +256,7 @@ def run_optimization(
             cwd=str(REPO_ROOT),
             capture_output=True,
             text=True,
-            timeout=600,  # 10 min per optimization (low fidelity, allows full startup + solver + artifact processing)
+            timeout=timeout,  # Per-seed timeout (configurable)
         )
 
         if result.returncode == 0:
@@ -307,6 +308,7 @@ def optimize_nc_with_lhs_seeds(
     seeds: List[Dict[str, float]],
     solver_name: str = "auto",
     linear_solver: str = "ma97",
+    timeout: int = 300,
     verbose: bool = True,
 ) -> Dict:
     """
@@ -336,6 +338,7 @@ def optimize_nc_with_lhs_seeds(
             nc, seed, seed_idx, artifact_dir,
             solver_name=solver_name,
             linear_solver=linear_solver,
+            timeout=timeout,
             verbose=verbose,
         )
         optimization_results.append(result)
@@ -398,6 +401,7 @@ def main() -> int:
     parser.add_argument("--artifact-dir", default="artifacts/phase2_lhs_seeding")
     parser.add_argument("--solver-name", default="auto")
     parser.add_argument("--linear-solver", default="ma97")
+    parser.add_argument("--timeout", type=int, default=300, help="Timeout per seed optimization (seconds)")
     parser.add_argument("--verbose", action="store_true", default=True)
 
     args = parser.parse_args()
@@ -441,6 +445,7 @@ def main() -> int:
             seeds=lhs_seeds,  # Use same seeds for all NCs
             solver_name=args.solver_name,
             linear_solver=args.linear_solver,
+            timeout=args.timeout,
             verbose=args.verbose,
         )
         all_results.append(result)
