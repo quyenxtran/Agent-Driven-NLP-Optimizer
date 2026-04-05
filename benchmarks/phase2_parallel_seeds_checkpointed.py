@@ -69,12 +69,12 @@ def optimize_seed_worker(args: Tuple) -> Dict:
     Runs ONE seed optimization, blocks until complete.
 
     Args:
-        args: (nc, seed, seed_idx, artifact_dir, timeout)
+        args: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_min)
 
     Returns:
         {status, seed_idx, productivity, ...}
     """
-    nc, seed, seed_idx, artifact_dir, timeout = args
+    nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_min = args
 
     # Worker inherits OMP_NUM_THREADS=2 from parent process
     nc_str = format_nc(nc)
@@ -97,17 +97,17 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         "--linear-solver",
         "ma97",
         "--nfex",
-        "4",  # Standard low-fidelity
+        str(nfex),
         "--nfet",
-        "2",
+        str(nfet),
         "--ncp",
-        "1",
+        str(ncp),
         "--purity-min",
-        "0.15",
+        str(purity_min),
         "--recovery-ga-min",
-        "0.15",
+        str(recovery_min),
         "--recovery-ma-min",
-        "0.15",
+        str(recovery_min),
         "--tstep",
         f"{seed['tstep']:.4f}",
         "--ffeed",
@@ -165,6 +165,11 @@ def optimize_nc_parallel(
     timeout: int = 120,
     n_workers: int = 12,
     verbose: bool = True,
+    nfex: int = 4,
+    nfet: int = 2,
+    ncp: int = 1,
+    purity_min: float = 0.15,
+    recovery_min: float = 0.15,
 ) -> Dict:
     """
     Optimize NC with LHS seeds using parallel workers.
@@ -176,6 +181,11 @@ def optimize_nc_parallel(
         timeout: Per-seed timeout (seconds)
         n_workers: Number of parallel workers (recommend: 12 for 24 CPUs)
         verbose: Print progress
+        nfex: Number of finite elements in space
+        nfet: Number of finite elements in time
+        ncp: Number of collocation points
+        purity_min: Minimum purity constraint
+        recovery_min: Minimum recovery constraint
 
     Returns:
         {nc, n_seeds, n_successful, best_seed_idx, productivity, ...}
@@ -189,10 +199,12 @@ def optimize_nc_parallel(
         print(f"{'='*70}")
         print(f"Each worker: OMP_NUM_THREADS=2 (2 CPUs per worker)")
         print(f"Total CPUs used: {n_workers} workers × 2 threads = {n_workers * 2}")
+        print(f"Discretization: nfex={nfex}, nfet={nfet}, ncp={ncp}")
+        print(f"Constraints: purity≥{purity_min:.2f}, recovery≥{recovery_min:.2f}")
         print(f"\nOptimizing with multiprocessing pool...")
 
-    # Create task list: (nc, seed, seed_idx, artifact_dir, timeout)
-    tasks = [(nc, seed, idx, artifact_dir, timeout) for idx, seed in enumerate(seeds)]
+    # Create task list: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_min)
+    tasks = [(nc, seed, idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_min) for idx, seed in enumerate(seeds)]
 
     optimization_results = []
     completed = 0
@@ -305,6 +317,11 @@ def main():
     parser.add_argument("--artifact-dir", default="artifacts/phase2_lhs_seeding")
     parser.add_argument("--timeout", type=int, default=120, help="Timeout per seed")
     parser.add_argument("--n-workers", type=int, default=12, help="Number of parallel workers (recommend 12 for 24 CPUs)")
+    parser.add_argument("--nfex", type=int, default=4, help="Finite elements in space")
+    parser.add_argument("--nfet", type=int, default=2, help="Finite elements in time")
+    parser.add_argument("--ncp", type=int, default=1, help="Collocation points")
+    parser.add_argument("--purity-min", type=float, default=0.15, help="Minimum purity constraint")
+    parser.add_argument("--recovery-min", type=float, default=0.15, help="Minimum recovery constraint")
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--resume", action="store_true", help="Resume from last completed NC")
 
@@ -328,6 +345,8 @@ def main():
     print(f"Parallel workers: {args.n_workers}")
     print(f"Threads per worker: 2 (OMP_NUM_THREADS=2)")
     print(f"Total CPUs: {args.n_workers * 2}")
+    print(f"Discretization: nfex={args.nfex}, nfet={args.nfet}, ncp={args.ncp}")
+    print(f"Constraints: purity≥{args.purity_min:.2f}, recovery≥{args.recovery_min:.2f}")
     print(f"Expected speedup: ~{args.n_workers // 4}x (47 hours → ~{47 // (args.n_workers // 4)} hours)")
     print("")
 
@@ -353,7 +372,8 @@ def main():
     all_results = checkpoint.get("completed_results", [])
     for nc in ncs_to_process:
         result = optimize_nc_parallel(
-            nc, artifact_dir, lhs_seeds, timeout=args.timeout, n_workers=args.n_workers, verbose=args.verbose
+            nc, artifact_dir, lhs_seeds, timeout=args.timeout, n_workers=args.n_workers, verbose=args.verbose,
+            nfex=args.nfex, nfet=args.nfet, ncp=args.ncp, purity_min=args.purity_min, recovery_min=args.recovery_min
         )
         all_results.append(result)
 
