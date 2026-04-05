@@ -143,7 +143,8 @@ def run_lhs_only_benchmark(
             eval_result = evaluate_candidate(args, config)
             eval_time = time.time() - eval_start
 
-            objective_value = eval_result.get("objective_mean", None)
+            # Extract objective value (J_validated is the productivity for feasible solutions)
+            objective_value = eval_result.get("J_validated", None)
             status_str = eval_result.get("status", "unknown")
 
             if verbose:
