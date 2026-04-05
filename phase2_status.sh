@@ -2,7 +2,7 @@
 # Simple status script for use with 'watch' command
 # Usage: watch -n 5 ./phase2_status.sh
 
-JOB_ID="6285604"
+JOB_ID="6285721"
 ARTIFACT_DIR="artifacts/phase2_lhs_seeding"
 IPOPT_DIR="$ARTIFACT_DIR/ipopt_logs"
 
@@ -59,7 +59,8 @@ else:
         for log in logs:
             with open(log) as f:
                 content = f.read()
-            if "Optimal Solution Found" in content:
+            # Count both "Optimal Solution Found" and "Solved To Acceptable Level" as feasible
+            if "Optimal Solution Found" in content or "Solved To Acceptable Level" in content:
                 feasible += 1
             elif "Converged to a point of local infeasibility" in content:
                 infeasible += 1

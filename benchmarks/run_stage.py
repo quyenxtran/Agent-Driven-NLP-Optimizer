@@ -642,6 +642,14 @@ def build_solver_options(args: argparse.Namespace) -> Dict[str, object]:
         options["tol"] = args.tol
     if args.acceptable_tol is not None:
         options["acceptable_tol"] = args.acceptable_tol
+    if getattr(args, "constr_viol_tol", None) is not None:
+        options["constr_viol_tol"] = args.constr_viol_tol
+    if getattr(args, "acceptable_constr_viol_tol", None) is not None:
+        options["acceptable_constr_viol_tol"] = args.acceptable_constr_viol_tol
+    if getattr(args, "dual_inf_tol", None) is not None:
+        options["dual_inf_tol"] = args.dual_inf_tol
+    if getattr(args, "acceptable_dual_inf_tol", None) is not None:
+        options["acceptable_dual_inf_tol"] = args.acceptable_dual_inf_tol
     max_solve_seconds = float(getattr(args, "max_solve_seconds", 0.0) or 0.0)
     if max_solve_seconds > 0:
         # IPOPT-level kill switch for long or stalled runs.
@@ -1989,6 +1997,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-iter", type=int)
     parser.add_argument("--tol", type=float)
     parser.add_argument("--acceptable-tol", type=float)
+    parser.add_argument("--constr-viol-tol", type=float, help="Constraint violation tolerance (default 1e-4)")
+    parser.add_argument("--acceptable-constr-viol-tol", type=float, help="Acceptable constraint violation (default 1e-2)")
+    parser.add_argument("--dual-inf-tol", type=float, help="Dual feasibility tolerance (default 1e-4)")
+    parser.add_argument("--acceptable-dual-inf-tol", type=float, help="Acceptable dual feasibility (default 1e-2)")
     parser.add_argument("--max-solve-seconds", type=float, default=float(os.environ.get("SMB_MAX_SOLVE_SECONDS", "0")))
     parser.add_argument("--executive-live-monitor", action="store_true", default=os.environ.get("SMB_EXECUTIVE_LIVE_MONITOR", "0") == "1")
     parser.add_argument(

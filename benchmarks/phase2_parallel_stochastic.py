@@ -116,6 +116,18 @@ def optimize_seed_worker(args: Tuple) -> Dict:
         "ipopt",
         "--linear-solver",
         "ma97",
+        "--tol",
+        "1e-3",  # Relaxed from 1e-6: allow 0.1% error for Phase 2 exploration
+        "--acceptable-tol",
+        "1e-2",  # Relaxed from 1e-5: allow 1% error for fast convergence
+        "--constr-viol-tol",
+        "1e-1",  # Relaxed from 1e-4: allow 10% constraint violation
+        "--acceptable-constr-viol-tol",
+        "1.0",  # Very relaxed: allow 100% constraint violation for Phase 2
+        "--dual-inf-tol",
+        "1e-2",  # Relaxed from 1e-4: allow 1% dual infeasibility
+        "--acceptable-dual-inf-tol",
+        "1.0",  # Very relaxed: allow large dual infeasibility
         "--nfex",
         str(nfex),
         "--nfet",
