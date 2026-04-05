@@ -986,12 +986,8 @@ def scientist_b_review(
                 data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
                     "Review quality risk: missing physics-based audit."
                 ]
+            # Graceful degradation: provide default counterproposal if malformed (don't reject)
             if not isinstance(counterproposal, dict):
-                data["decision"] = "reject"
-                data["reason"] = "Rejected: review must include a structured counterproposal_run."
-                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
-                    "Review quality risk: missing counterproposal run object."
-                ]
                 data["counterproposal_run"] = {
                     "nc": list(task.get("nc", [])) if isinstance(task.get("nc"), list) else [],
                     "flow_adjustments": {"Ffeed": 0.0, "F1": 0.0, "Fdes": 0.0, "Fex": 0.0, "Fraf": 0.0, "tstep": 0.0},

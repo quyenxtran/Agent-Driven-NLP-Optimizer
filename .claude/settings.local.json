@@ -49,7 +49,8 @@
       "Bash(squeue -u qtran47 --format=\"%.7i %.20j %.2t\")",
       "Bash(python -m py_compile benchmarks/agent_scientists.py)",
       "Bash(sbatch slurm/pace_smb_27b_smoke_test.slurm)",
-      "Bash(squeue -u qtran47 --format=\"%.7i %.25j %.2t %.6M\")"
+      "Bash(squeue -u qtran47 --format=\"%.7i %.25j %.2t %.6M\")",
+      "Bash(git commit -m 'Graceful degradation for counterproposal_run:*)"
     ]
   }
 }
