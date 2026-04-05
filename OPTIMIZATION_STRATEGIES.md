@@ -497,14 +497,69 @@ Risk: Miss global optimum if early pattern wrong
 
 ---
 
+## Strategy 4: Agent-Orchestrated BO (NEW!)
+
+### Philosophy
+**"LLM as intelligent orchestrator of multiple surrogate models"**
+
+Agent has access to 3 tool types (GP, DNN, PINN). Agent:
+1. Decides which tool to use (based on data characteristics)
+2. Interprets surrogate predictions (reasoning about models)
+3. Refines LHS ranking using actual data
+4. Detects ensemble disagreement (high uncertainty regions)
+5. Adapts strategy mid-run (switches tools if needed)
+
+**Mechanics:**
+```
+Agent reads: observations + surrogate predictions + LHS ranking
+Agent decides: Which tool best explains data?
+Agent acts: Fit all 3 surrogates, compute ensemble disagreement
+Agent predicts: Run IPOPT on high-disagreement config
+Agent learns: Update belief about tool accuracy
+```
+
+**Expected best J**: 56-66 (highest of all methods)
+**Complexity**: Very high (3 surrogates + agent orchestration)
+**Uncertainty**: Explicit (ensemble disagreement = lack of confidence)
+
+**See**: `AGENT_ORCHESTRATED_BO.md` for full details
+
+---
+
+## All Four Strategies Compared
+
+```
+┌──────────────────┬──────────────┬──────────────┬──────────────┬──────────────┐
+│ Strategy         │ LHS+Agent    │ BO+GP        │ LHS-Only     │ Agent-Orch BO│
+├──────────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ Best J (est.)    │ 55-65        │ 50-60        │ 50-58        │ 56-66        │
+│ Iterations (4h)  │ 8-15         │ 8-25         │ 12-20        │ 8-12         │
+│ Deterministic    │ ❌ (LLM)     │ ✅           │ ✅           │ ❌ (LLM)     │
+│ Complexity       │ High         │ Medium       │ Very low     │ VERY HIGH    │
+│ Physics-aware    │ ✅ (initial) │ ❌           │ ✅ (always)  │ ✅ (tools)   │
+│ Learning         │ ✅ (agent)   │ ✅ (GP fits) │ ❌           │ ✅✅ (3 tools+agent)|
+│ Tools            │ None         │ GP           │ None         │ GP+DNN+PINN  │
+│ Tool adaptivity  │ ❌ Fixed     │ ❌ Fixed     │ ❌ Fixed     │ ✅ Dynamic   │
+│ Interpretable    │ ✅✅✅       │ ✅           │ ✅✅         │ ✅✅ (reasoning)|
+│ Risk            │ Medium       │ Low          │ Low          │ High (complexity)|
+└──────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
+```
+
+---
+
 ## Conclusion
 
 Each strategy is optimal for different assumptions:
 
-- **LHS+Agent**: Best when physics is good AND interpretability matters
-- **BO+GP**: Best when you want reproducible, principled, black-box optimization
-- **LHS-Only**: Best when simplicity and transparency are paramount
+- **LHS+Agent** (Strategy 1): Best when physics is good AND interpretability matters
+- **BO+GP** (Strategy 2): Best when reproducibility needed AND black-box is fine
+- **LHS-Only** (Strategy 3): Best when simplicity paramount AND physics is trust
+- **Agent-Orchestrated BO** (Strategy 4): Best when max performance needed AND complexity acceptable
 
-**Running all three** in smoke tests reveals which assumptions are true for YOUR problem.
+**Running smoke tests** reveals which assumptions are true for YOUR problem.
 
-**Our hypothesis**: LHS+Agent wins (physics + learning), but BO+GP close second (systematic).
+**Our hypothesis**: 
+- LHS+Agent wins on interpretability + quality
+- Agent-Orchestrated BO wins on pure performance (if orchestration works)
+- BO+GP wins on reproducibility
+- LHS-Only wins on simplicity
