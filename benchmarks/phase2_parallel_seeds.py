@@ -36,16 +36,17 @@ def generate_lhs_seeds(n_seeds: int = 100) -> List[Dict[str, float]]:
     """Generate N-D Latin Hypercube samples for flow space.
 
     Only sample independent variables (tstep, ffeed, fdes, fex).
-    Derive Fraf and F1 from mass balance equality:
-      Fraf = Ffeed + Fdes - Fex (mass balance constraint, always satisfied)
-      F1 = Ffeed + Fraf
-    No rejection needed - mass balance is deterministic equality.
+    Derive Fraf from mass balance equality: Fraf = Ffeed + Fdes - Fex
+    Enforce bounds constraint: 0.5 ≤ Fraf ≤ 5.0 (required by SMB solver)
+    Reject seeds violating Fraf bounds; derive F1 = Ffeed + Fraf
     """
     var_names = ["tstep", "ffeed", "fdes", "fex"]
     bounds = [(8.0, 12.0), (0.5, 2.5), (0.5, 2.5), (0.5, 2.5)]
+    fraf_bounds = (0.5, 5.0)
 
     sampler = qmc.LatinHypercube(d=4, seed=42)
-    samples = sampler.random(n=n_seeds)
+    # Generate 2x samples to account for rejections
+    samples = sampler.random(n=int(n_seeds * 2.0))
 
     seeds = []
     for sample in samples:
@@ -53,11 +54,19 @@ def generate_lhs_seeds(n_seeds: int = 100) -> List[Dict[str, float]]:
             var_names[i]: bounds[i][0] + sample[i] * (bounds[i][1] - bounds[i][0])
             for i in range(4)
         }
-        # Derive Fraf from mass balance equality: Fraf = Ffeed + Fdes - Fex
+        # Derive Fraf from mass balance: Fraf = Ffeed + Fdes - Fex
         fraf = seed['ffeed'] + seed['fdes'] - seed['fex']
-        # Derive F1 from: F1 = Ffeed + Fraf
-        seed['f1'] = seed['ffeed'] + fraf
-        seeds.append(seed)
+
+        # Enforce Fraf bounds (required by SMB solver)
+        if fraf_bounds[0] <= fraf <= fraf_bounds[1]:
+            seed['f1'] = seed['ffeed'] + fraf
+            seeds.append(seed)
+            if len(seeds) >= n_seeds:
+                break
+
+    if len(seeds) < n_seeds:
+        import warnings
+        warnings.warn(f"Generated only {len(seeds)} seeds within Fraf bounds {fraf_bounds} (requested {n_seeds})")
 
     return seeds
 
