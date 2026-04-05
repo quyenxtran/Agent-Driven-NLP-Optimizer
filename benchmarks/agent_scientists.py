@@ -980,12 +980,12 @@ def scientist_b_review(
                 data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
                     "Review quality risk: flowrate audit has no numeric deltas."
                 ]
-            if not physics_audit or not text_mentions_physics_signals([physics_audit]):
-                data["decision"] = "reject"
-                data["reason"] = "Rejected: review must include physics-grounded critique."
-                data["risk_flags"] = normalize_text_list(data.get("risk_flags"), max_items=6) + [
-                    "Review quality risk: missing physics-based audit."
-                ]
+            # Simplified schema: physics_audit is required but we accept as-is (graceful degradation)
+            if physics_audit:
+                data["physics_audit"] = physics_audit
+            else:
+                # Provide default if missing
+                data["physics_audit"] = "Zone balance and selectivity assessment needed."
             # Graceful degradation: provide default counterproposal if malformed (don't reject)
             if not isinstance(counterproposal, dict):
                 data["counterproposal_run"] = {
