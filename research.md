@@ -17912,3 +17912,449 @@ Ranked layouts (score combines structural symmetry penalty + SQLite evidence):
 - executive_priority_updates:
   - Systematic infeasibility trigger forced a diagnostic run next iteration.
 - execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_2f1
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.013602639751288469
+  - purity_ex_meoh_free: 0.39000911913602254
+  - recovery_ex_GA: 0.569333939493389
+  - recovery_ex_MA: 0.9309476144740961
+  - normalized_total_violation: 0.9340632681895429
+  - flow: {'Ffeed': 1.5, 'F1': 2.7, 'Fdes': 1.5, 'Fex': 1.1, 'Fraf': 1.9, 'tstep': 8.7}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.5, 'F1': 2.7, 'Fdes': 1.5, 'Fex': 1.1, 'Fraf': 1.9, 'tstep': 8.7}
+  - composition_ce_cr: CE_acid=0.006177988244252637 CE_water=0.0096626368619976 CE_meoh=0.7668542273100344 CR_acid=0.001541901678314732 CR_water=0.8746512465311302 CR_meoh=0.0906724152623884 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:00:23 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 41 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 10 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 11
+- timestamp_utc: 2026-04-05 02:00:23 UTC
+- candidate_nc: [1, 1, 2, 4]
+- candidate_seed: optimized_2f2
+- scientist_a_proposed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'optimized_2f2', 'seed': {'name': 'optimized_2f2', 'F1': 2.9, 'Fdes': 1.6, 'Fex': 1.2, 'Ffeed': 1.6, 'Fraf': 2.0, 'tstep': 8.5}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [1, 1, 2, 4], 'seed_name': 'optimized_2f2', 'flow': {'Ffeed': 1.6, 'F1': 2.9, 'Fdes': 1.6, 'Fex': 1.2, 'Fraf': 2.0, 'tstep': 8.5}}
+- scientist_b_reviewed_task: {'nc': [1, 1, 2, 4], 'seed_name': 'optimized_2f2', 'seed': {'name': 'optimized_2f2', 'F1': 2.9, 'Fdes': 1.6, 'Fex': 1.2, 'Ffeed': 1.6, 'Fraf': 2.0, 'tstep': 8.5}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_2f2
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.01360284518396999
+  - purity_ex_meoh_free: 0.38936053799192116
+  - recovery_ex_GA: 0.5694150808385141
+  - recovery_ex_MA: 0.9309072667576306
+  - normalized_total_violation: 0.9346937568550719
+  - flow: {'Ffeed': 1.6, 'F1': 2.9, 'Fdes': 1.6, 'Fex': 1.2, 'Fraf': 2.0, 'tstep': 8.5}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.6, 'F1': 2.9, 'Fdes': 1.6, 'Fex': 1.2, 'Fraf': 2.0, 'tstep': 8.5}
+  - composition_ce_cr: CE_acid=0.0061775472247275085 CE_water=0.009688331882044498 CE_meoh=0.7668173688618404 CR_acid=0.00154201108910641 CR_water=0.8746584999496225 CR_meoh=0.0907795359762318 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:01:39 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 41 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 12
+- timestamp_utc: 2026-04-05 02:01:39 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference', 'seed': {'name': 'reference', 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': True, 'screening_rank': 0}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0031553720821459724
+  - purity_ex_meoh_free: 0.4648674909577697
+  - recovery_ex_GA: 0.9000000071663808
+  - recovery_ex_MA: 0.8999999910054494
+  - normalized_total_violation: 0.4834805755964233
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.2, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - composition_ce_cr: CE_acid=0.006310744227248112 CE_water=0.007264617246719565 CE_meoh=0.38143925012779833 CR_acid=0.0006903884253664152 CR_water=0.36858153440268304 CR_meoh=0.037814764478404934 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:01:44 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 42 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 13
+- timestamp_utc: 2026-04-05 02:01:44 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference_minus
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_minus', 'seed': {'name': 'reference_minus', 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Ffeed': 1.2, 'Fraf': 1.5, 'tstep': 9.6}, 'screening_seed': True, 'screening_rank': 1}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_minus', 'flow': {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_minus', 'seed': {'name': 'reference_minus', 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Ffeed': 1.2, 'Fraf': 1.5, 'tstep': 9.6}, 'screening_seed': True, 'screening_rank': 1}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.0032069716497685687
+  - purity_ex_meoh_free: 0.4689131222868309
+  - recovery_ex_GA: 0.934341151193681
+  - recovery_ex_MA: 0.899999992104967
+  - normalized_total_violation: 0.47898542845355796
+  - flow: {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.2, 'F1': 2.1, 'Fdes': 1.15, 'Fex': 0.85, 'Fraf': 1.4999999999999996, 'tstep': 9.6}
+  - composition_ce_cr: CE_acid=0.006413943363525078 CE_water=0.007264375836085011 CE_meoh=0.38077200855531707 CR_acid=0.0007103594164241031 CR_water=0.36795251397326884 CR_meoh=0.035763275226511605 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:01:50 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 43 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 14
+- timestamp_utc: 2026-04-05 02:01:50 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference_plus
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_plus', 'seed': {'name': 'reference_plus', 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Ffeed': 1.4000000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}, 'screening_seed': True, 'screening_rank': 2}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_plus', 'flow': {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_plus', 'seed': {'name': 'reference_plus', 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Ffeed': 1.4000000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}, 'screening_seed': True, 'screening_rank': 2}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_plus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.003155372406753084
+  - purity_ex_meoh_free: 0.8736580969578445
+  - recovery_ex_GA: 0.9000000992689093
+  - recovery_ex_MA: 0.9000000823388866
+  - normalized_total_violation: 0.02926878115795062
+  - flow: {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.4000000000000001, 'F1': 2.3000000000000003, 'Fdes': 1.25, 'Fex': 0.9500000000000001, 'Fraf': 1.7000000000000002, 'tstep': 9.200000000000001}
+  - composition_ce_cr: CE_acid=0.00631074486954288 CE_water=0.000912612747718909 CE_meoh=0.12826747435021246 CR_acid=0.001664657917459963 CR_water=0.14337880048236593 CR_meoh=0.013821645963678278 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:01:54 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 44 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 15
+- timestamp_utc: 2026-04-05 02:01:55 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: reference_tstep
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'flow': {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'reference_tstep', 'seed': {'name': 'reference_tstep', 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Ffeed': 1.3, 'Fraf': 1.6500000000000001, 'tstep': 9.8}, 'screening_seed': True, 'screening_rank': 3}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_tstep
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.003206598973169338
+  - purity_ex_meoh_free: 0.46886977261909824
+  - recovery_ex_GA: 0.9340931231184263
+  - recovery_ex_MA: 0.8999999921067853
+  - normalized_total_violation: 0.47903359474901835
+  - flow: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - execution_policy_note: Probe phase screening task: forcing low-fidelity (nfex=5, nfet=2, ncp=1).
+  - execution_policy_fidelity_override: {'nfex': 5, 'nfet': 2, 'ncp': 1}
+  - execution_policy_flow_override: {'Ffeed': 1.3, 'F1': 2.2, 'Fdes': 1.25, 'Fex': 0.9, 'Fraf': 1.65, 'tstep': 9.8}
+  - composition_ce_cr: CE_acid=0.006413198010319195 CE_water=0.0072647961467687755 CE_meoh=0.3807542758321709 CR_acid=0.0007103959183835458 CR_water=0.3679395215333736 CR_meoh=0.03577173157183772 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:01:59 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 45 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 16
+- timestamp_utc: 2026-04-05 02:01:59 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_a_minus
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'flow': {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_a_minus', 'seed': {'name': 'optimized_a_minus', 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Ffeed': 1.1, 'Fraf': 1.4, 'tstep': 9.2}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_a_minus
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.017899063057901718
+  - purity_ex_meoh_free: 0.531873290278043
+  - recovery_ex_GA: 1.0800516185082027
+  - recovery_ex_MA: 0.9768202019623021
+  - normalized_total_violation: 0.40902967746884117
+  - flow: {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
+  - composition_ce_cr: CE_acid=0.007284785185485559 CE_water=0.006411682222526893 CE_meoh=0.7660410269348624 CR_acid=0.00017497015649808382 CR_water=0.9544874212378243 CR_meoh=0.04377433282633008 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:02:57 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 46 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+### Search Iteration 17
+- timestamp_utc: 2026-04-05 02:02:57 UTC
+- candidate_nc: [2, 2, 2, 2]
+- candidate_seed: optimized_c
+- scientist_a_proposed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'seed': {'name': 'optimized_c', 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': False, 'screening_rank': None}
+- effective_task_after_policy: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'flow': {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}}
+- scientist_b_reviewed_task: {'nc': [2, 2, 2, 2], 'seed_name': 'optimized_c', 'seed': {'name': 'optimized_c', 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Ffeed': 1.2, 'Fraf': 1.6, 'tstep': 9.4}, 'screening_seed': False, 'screening_rank': None}
+- scientist_a_reason: Systematic infeasibility trigger fired across the last 5 results.
+- scientist_a_mode: diagnostic_forced
+- scientist_a_llm_backend: 
+- scientist_b_decision: approve
+- scientist_b_reason: Diagnostic override bypassed Scientist_B review.
+- scientist_b_mode: diagnostic_forced
+- scientist_b_llm_backend: 
+- priority_updates:
+  - Systematic infeasibility triggered an immediate diagnostic execution.
+  - Diagnostic override bypassed Scientist_B so the next iteration can probe failure structure.
+- scientist_b_risk_flags:
+  - Systematic infeasibility trigger fired across the last 5 results.
+- executive_decision: FORCE_DIAGNOSTIC
+- executive_reason: Systematic infeasibility trigger fired across the last 5 results.
+- executive_acquisition_type: FORCE_DIAGNOSTIC
+- executive_priority_updates:
+  - Systematic infeasibility trigger forced a diagnostic run next iteration.
+- execution_policy: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+- search_result_run: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_c
+  - status: solver_error
+  - feasible: False
+  - termination: infeasible
+  - productivity_ex_ga_ma: 0.01789795099213979
+  - purity_ex_meoh_free: 0.5322584413137048
+  - recovery_ex_GA: 1.0799337709824774
+  - recovery_ex_MA: 0.9767975703643988
+  - normalized_total_violation: 0.40860173187366133
+  - flow: {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - execution_policy_note: Probe phase active, waiting for required per-NC screening runs before deeper seeds.
+  - execution_policy_fidelity_override: {}
+  - execution_policy_flow_override: {'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+  - composition_ce_cr: CE_acid=0.0072849110605673634 CE_water=0.006401881848882759 CE_meoh=0.7660784726606409 CR_acid=0.000175070757700458 CR_water=0.9544902093674973 CR_meoh=0.043788600961064954 source=provisional
+
+#### Insights and Trends Update
+- timestamp_utc: 2026-04-05 02:03:36 UTC
+| nc | n_total | n_feasible | best_violation | best_productivity | best_J_validated |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2,2,2,2 | 47 | 0 | 3.153672935142361e-07 | 0.029238845121392774 |  |
+| 1,3,2,2 | 27 | 0 | 0.0 | 0.02438325837450604 |  |
+| 1,2,3,2 | 29 | 0 | 0.02925962255078487 | 0.017876742358725772 |  |
+| 1,2,2,3 | 22 | 0 | 0.4206433142428444 | 0.017856000164260904 |  |
+| 1,1,2,4 | 11 | 0 | 0.2189117342176187 | 0.013866787685794245 |  |
+| 1,1,3,3 | 28 | 0 | 0.22142681865890587 | 0.013798257830126837 |  |
+| 1,3,1,3 | 22 | 0 |  |  |  |
+| 1,3,3,1 | 22 | 0 |  |  |  |
+| 2,1,2,3 | 22 | 0 |  |  |  |
+| 2,1,3,2 | 15 | 0 |  |  |  |
+
+#### Finalization Hard-Gate Notes
+- timestamp_utc: 2026-04-05 02:03:36 UTC
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_a_minus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_c: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_a: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_a_plus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_2f2: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_2f1: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_b: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_c: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_minus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_tstep: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference_plus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_2-2-2-2_reference: finalization gate requires non-reference optimization candidate.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_tstep: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference: finalization gate requires non-reference optimization candidate.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_plus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_reference_minus: candidate is not low-fidelity pre-final run.
+- Skipped qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_a_minus: candidate is not low-fidelity pre-final run.
+
+### Run Closing Summary
+- finished_utc: 2026-04-05 02:03:36 UTC
+- best_result: qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_a_minus
+- best_status: solver_error
+- search_results_count: 17
+- validation_results_count: 0
+
+### Proposed Next Simulations
+- Probe around run=qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_a_minus nc=[2, 2, 2, 2] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.1, 'F1': 2.4, 'Fdes': 1.3, 'Fex': 1.0, 'Fraf': 1.4000000000000004, 'tstep': 9.2}
+- Probe around run=qwen27b_smoke_test_lhs_search_nc_2-2-2-2_optimized_c nc=[2, 2, 2, 2] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.2, 'F1': 2.3, 'Fdes': 1.3, 'Fex': 0.9, 'Fraf': 1.6, 'tstep': 9.4}
+- Probe around run=qwen27b_smoke_test_lhs_search_nc_1-1-2-4_optimized_a nc=[1, 1, 2, 4] with +/- small perturbations on Ffeed/Fdes/Fex while preserving flow consistency. Base flow={'Ffeed': 1.2, 'F1': 2.6, 'Fdes': 1.4, 'Fex': 1.0, 'Fraf': 1.5999999999999996, 'tstep': 8.8}
