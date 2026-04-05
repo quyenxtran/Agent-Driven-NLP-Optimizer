@@ -1,70 +1,101 @@
-# Strategy 4: Agent-Orchestrated Bayesian Optimization with Tool Use
+# Strategy 4: Agent-Orchestrated Bayesian Optimization with Progressive Tools
 
 ## Philosophy
-**"LLM agent as intelligent orchestrator of computational tools"**
+**"Start simple, upgrade tools when data justifies it"**
 
-Give the agent access to surrogate model tools (GP, DNN, PINN) and Bayesian optimization machinery. The agent:
-1. Decides which tool to use (refine LHS ranking, fit surrogate, compute acquisition)
-2. Interprets surrogate predictions (what does the model think?)
-3. Combines mathematical insights with domain knowledge
-4. Refines the search strategy adaptively
+Agent starts with GP (fast, good with small data). After ~100 iterations accumulates enough data to justify:
+- DNN surrogate (flexible nonlinear modeling)
+- PINN surrogate (physics-informed constraints)
+
+Agent then:
+1. Tests new tool against GP baseline
+2. Decides: keep using GP, or switch to DNN/PINN?
+3. Refines LHS ranking as confidence grows
+4. Adapts strategy based on which tool is most accurate
 
 ---
 
-## High-Level Architecture
+## Progressive Tool Adoption Architecture
 
 ```
+PHASE 1: Iterations 1-50 (SMALL DATA - GP ONLY)
 ┌─────────────────────────────────────────────────────────────────┐
-│ AGENT-ORCHESTRATED BO FRAMEWORK                                │
-├─────────────────────────────────────────────────────────────────┤
+│ Agent uses GP (fast, good with few observations)                │
 │                                                                 │
-│  LLM Agent (Scientist_A)                                        │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ "I have observations. Let me use tools to decide next."  │  │
-│  │                                                          │  │
-│  │ Available Tools:                                         │  │
-│  │ • fit_gp_surrogate(observations) → model                │  │
-│  │ • fit_dnn_surrogate(observations) → model               │  │
-│  │ • fit_pinn_surrogate(observations) → model              │  │
-│  │ • predict_j(model, config) → [mean, uncertainty]        │  │
-│  │ • compute_expected_improvement(predictions) → ei_scores │  │
-│  │ • refine_lhs_ranking(predictions) → new_ranking         │  │
-│  │ • suggest_exploration_point() → config                  │  │
-│  │ • suggest_exploitation_point() → config                 │  │
-│  │                                                          │  │
-│  │ Decision Logic:                                          │  │
-│  │ 1. Check convergence (improvement rate slowing?)        │  │
-│  │ 2. Fit best surrogate (GP vs DNN vs PINN)              │  │
-│  │ 3. Analyze predictions (where are the optimum?)        │  │
-│  │ 4. Compute acquisition scores (EI, UCB)                │  │
-│  │ 5. Refine LHS ranking based on surrogate               │  │
-│  │ 6. Decide: explore new region or exploit current best? │  │
-│  │ 7. Output: next config to evaluate + reasoning          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│            ↓              ↓              ↓                      │
-│  ┌────────────────┬──────────────┬──────────────────┐           │
-│  │ TOOL: GP       │ TOOL: DNN    │ TOOL: PINN       │           │
-│  │ Surrogate      │ Surrogate    │ Surrogate        │           │
-│  ├────────────────┼──────────────┼──────────────────┤           │
-│  │ ✅ Fast       │ ✅ Flexible  │ ✅ Physics-aware │           │
-│  │ ✅ Uncertain  │ ✅ Scales    │ ✅ Constraints   │           │
-│  │ ❌ Limited    │ ❌ Black-box │ ❌ Training time │           │
-│  │    data       │              │                  │           │
-│  └────────────────┴──────────────┴──────────────────┘           │
-│            ↓              ↓              ↓                      │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ IPOPT Solver                                             │  │
-│  │ (Agent-chosen config) → J value                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│            ↓                                                    │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Learning Loop                                            │  │
-│  │ • Update observation history                             │  │
-│  │ • Refit surrogate models                                │  │
-│  │ • Agent learns: "which tool was most accurate?"         │  │
-│  │ • Adapt tool selection strategy                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
+│ Step 1: Random initial evals (3-5 configs)                     │
+│ Step 2: Fit GP to observations                                 │
+│ Step 3: Compute Expected Improvement                           │
+│ Step 4: Select next config (exploit uncertainty)               │
+│ Step 5: IPOPT solve → J value                                  │
+│ Step 6: Loop                                                    │
 │                                                                 │
+│ Agent decisions:                                                │
+│ • EI vs UCB? → EI (maximize improvement)                       │
+│ • Explore vs exploit? → Balanced (EI does this)                │
+│ • Refine LHS ranking? → Not yet (data too sparse)             │
+│                                                                 │
+│ Result: ~40-50 observations accumulated                         │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+PHASE 2: Iteration 50 - DECISION POINT
+┌─────────────────────────────────────────────────────────────────┐
+│ Agent: "I have 50 observations. Should I try DNN/PINN now?"     │
+│                                                                 │
+│ Check conditions:                                               │
+│ • Observation count: 50 (starting to be enough)                │
+│ • GP accuracy plateau? (how well is GP predicting?)            │
+│ • Convergence rate: (improvement slowing?)                     │
+│ • Time remaining: (do we have 20+ more iterations?)            │
+│                                                                 │
+│ Decision Logic:                                                 │
+│ IF n_obs < 100:                                                │
+│     STAY with GP (safe, proven)                                │
+│ ELSE IF n_obs >= 100 AND time_remaining > 20 iters:           │
+│     TRY DNN (flexible for nonlinear patterns)                  │
+│ ELSE IF n_obs >= 200 AND time_remaining > 15 iters:           │
+│     TRY PINN (physics constraints matter)                      │
+│                                                                 │
+│ Action: Train candidate tool, TEST it                          │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+PHASE 2B: Iteration 100+ (MEDIUM DATA - TOOL EVALUATION)
+┌─────────────────────────────────────────────────────────────────┐
+│ Agent tests new tool (DNN or PINN)                              │
+│                                                                 │
+│ Test Procedure:                                                 │
+│ 1. Train DNN on first 100 observations                         │
+│ 2. Validate DNN on last 20 observations (hold-out test)       │
+│ 3. Compare: DNN predictions vs actual J values                 │
+│ 4. Compute: DNN prediction error vs GP error                  │
+│                                                                 │
+│ Agent Decision:                                                 │
+│ IF dnn_error < gp_error + tolerance:                           │
+│     "DNN is better! Let's switch."                            │
+│     USE DNN for next decisions                                 │
+│ ELSE:                                                           │
+│     "GP is still better. Keep using GP."                       │
+│     STAY with GP                                               │
+│                                                                 │
+│ Benefit: Only train DNN once we have enough data               │
+│ Savings: Avoid training DNN on first 50 observations           │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+PHASE 3: Iteration 200+ (LARGE DATA - BEST TOOL)
+┌─────────────────────────────────────────────────────────────────┐
+│ Agent may try PINN if DNN didn't work out                       │
+│                                                                 │
+│ Same test-and-decide approach:                                  │
+│ 1. Train PINN on 200 observations                             │
+│ 2. Validate on hold-out test set                              │
+│ 3. Check: Do PINN predictions respect physics?                │
+│ 4. Compare accuracy vs current best tool                       │
+│                                                                 │
+│ Agent Decision:                                                 │
+│ USE best-performing tool for final iterations                 │
+│                                                                 │
+│ Bonus: Agent now understands problem                           │
+│ → Can refine LHS ranking with high confidence                 │
+│ → Can explain why certain configs are best                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -252,132 +283,185 @@ class AgentPINN:
 
 ---
 
-## Tool Use Patterns
+## Tool Use Patterns: Data-Driven Adoption
 
-### Pattern 1: Tool Selection Strategy
+### Pattern 1: Progressive Threshold-Based Tool Introduction
 
-**Agent decides which tool to use based on:**
+**Agent decides WHEN to try new tools based on data accumulation:**
 
 ```python
-def agent_chooses_tool(history, observations):
-    # Analyze data quality
-    data_quality = {
-        'n_observations': len(observations),
-        'data_variance': np.std([o['J'] for o in observations]),
-        'outliers': detect_outliers(observations),
-        'noise_level': estimate_noise(observations),
-    }
+def should_try_new_tool(n_observations, current_tool, time_remaining):
+    """
+    Decide if it's time to test a new surrogate model
+    """
     
-    # Analyze search progress
-    convergence = {
-        'improvement_rate': (best_J_now - best_J_prev) / time_elapsed,
-        'exploration_coverage': n_unique_configs / 31,
-        'constraint_violations': count_violations(observations),
-    }
+    # DNN threshold: at least 100 observations
+    if current_tool == 'GP' and n_observations >= 100 and time_remaining > 20:
+        return True, 'DNN'  # Try DNN, we have enough data
     
-    # Agent decides
-    decision = agent_llm(
-        f"Data: {data_quality}. Progress: {convergence}. "
-        f"Should we use GP (fast, uncertain), DNN (flexible, risky), "
-        f"or PINN (physics-aware, constrained)? Why?"
-    )
+    # PINN threshold: at least 200 observations  
+    if current_tool in ['GP', 'DNN'] and n_observations >= 200 and time_remaining > 15:
+        return True, 'PINN'  # Try PINN, we have a lot of data
     
-    selected_tool = decision['selected_tool']  # 'GP', 'DNN', or 'PINN'
-    return selected_tool, decision['reasoning']
+    return False, None
+
+def test_new_tool(current_tool, candidate_tool, observations):
+    """
+    Test if new tool is better than current tool
+    ONLY ONCE, when threshold is crossed
+    """
+    
+    # Split data: train on first N, validate on last 20
+    train_data = observations[:-20]
+    test_data = observations[-20:]
+    
+    # Train candidate tool ONCE
+    candidate = train_candidate_tool(train_data)
+    
+    # Compare accuracy
+    current_error = evaluate_tool(current_tool, test_data)
+    candidate_error = evaluate_tool(candidate_tool, test_data)
+    
+    # Agent decision
+    if candidate_error < current_error * 1.1:  # Allow 10% tolerance
+        agent_decision = agent_llm(
+            f"New {candidate_tool} has error {candidate_error:.4f}, "
+            f"current {current_tool} has {current_error:.4f}. "
+            f"{candidate_tool} is {(current_error/candidate_error):.1%} better. "
+            f"Should we switch?"
+        )
+        
+        if agent_agrees:
+            return candidate_tool  # Switch tools
+    
+    return current_tool  # Stick with current
 ```
 
-### Pattern 2: Ensemble Approach
+### Pattern 2: Tool Validation (One-Time Decision)
 
-**Agent uses multiple tools and combines:**
+**Agent tests each tool exactly ONCE when threshold reached:**
 
 ```python
-def agent_ensemble_decision(history, observations):
-    # Train all three tools
-    gp = train_gp(observations)
-    dnn = train_dnn(observations)
-    pinn = train_pinn(observations)
+class ProgressiveToolAdoption:
+    def __init__(self):
+        self.current_tool = 'GP'           # Always start with GP
+        self.dnn_tested = False            # Track if we've tested DNN
+        self.pinn_tested = False           # Track if we've tested PINN
+        self.best_tool = 'GP'
     
-    # Get predictions from all
-    gp_pred = gp.predict(all_configs)
-    dnn_pred = dnn.predict(all_configs)
-    pinn_pred = pinn.predict(all_configs)
-    
-    # Agent reasons about disagreement
-    disagreement = measure_disagreement(gp_pred, dnn_pred, pinn_pred)
-    
-    decision = agent_llm(
-        f"Three models disagree on best config: "
-        f"GP says {gp_best}, DNN says {dnn_best}, PINN says {pinn_best}. "
-        f"Disagreement pattern: {disagreement_analysis}. "
-        f"High disagreement means high uncertainty. "
-        f"Should we: (a) trust majority? (b) explore disagreement region? "
-        f"(c) run one more eval to disambiguate?"
-    )
-    
-    return decision['next_config']
+    def decide_next_config(self, observations):
+        n_obs = len(observations)
+        
+        # DECISION 1: Try DNN at 100 observations?
+        if n_obs == 100 and not self.dnn_tested:
+            self.best_tool = self.test_and_decide_dnn(observations)
+            self.dnn_tested = True
+        
+        # DECISION 2: Try PINN at 200 observations?
+        elif n_obs == 200 and not self.pinn_tested:
+            self.best_tool = self.test_and_decide_pinn(observations)
+            self.pinn_tested = True
+        
+        # Use best tool for prediction
+        if self.best_tool == 'GP':
+            return self.gp.predict_next_config(observations)
+        elif self.best_tool == 'DNN':
+            return self.dnn.predict_next_config(observations)
+        else:
+            return self.pinn.predict_next_config(observations)
 ```
 
-### Pattern 3: LHS Ranking Refinement
+### Pattern 3: LHS Ranking Refinement (Only After Learning)
 
-**Agent refines LHS physics ranking using surrogate insights:**
+**Agent refines LHS ranking only when it has learned enough:**
 
 ```python
-def agent_refines_lhs_ranking(initial_lhs_ranking, surrogate_predictions):
-    # Initial ranking: pure physics heuristics
-    # Surrogate predicts: actual J values based on data
+def should_refine_lhs_ranking(n_observations, best_tool):
+    """
+    Only refine ranking when we have sufficient data AND a trusted model
+    """
+    # Need 100+ observations and a validated tool
+    if n_observations < 100:
+        return False, "Not enough data yet"
     
-    # Compare
-    correlation = np.corrcoef(lhs_rank_scores, surrogate_predictions)[0, 1]
+    if best_tool == 'GP':
+        return True, "GP validated, can refine ranking"
+    
+    if n_observations >= 150 and best_tool in ['DNN', 'PINN']:
+        return True, f"{best_tool} validated, can refine ranking"
+    
+    return False, "Waiting for better tool validation"
+
+def refine_lhs_ranking(lhs_ranking, surrogate_predictions, best_tool):
+    """
+    Use best validated tool to refine initial physics ranking
+    """
+    
+    correlation = np.corrcoef(lhs_ranking, surrogate_predictions)[0, 1]
     
     agent_decision = agent_llm(
         f"LHS physics ranking correlates {correlation:.3f} with "
-        f"surrogate predictions. Mismatch: {rank_mismatches}. "
-        f"Physics might be {['correct', 'partially correct', 'wrong'][???]}. "
-        f"Should we: (a) trust LHS? (b) follow surrogate? "
-        f"(c) hybrid (weight both)? Why?"
+        f"{best_tool} surrogate predictions. "
+        f"Mismatch analysis: {analyze_mismatch(lhs_ranking, surrogate_predictions)}. "
+        f"Should we: (a) trust LHS? (b) follow {best_tool}? (c) hybrid?"
     )
     
-    refined_ranking = combine_rankings(
-        lhs_ranking, 
-        surrogate_ranking,
-        weights=agent_decision['weights']
-    )
-    
-    return refined_ranking
+    if agent_decision == 'trust_lhs':
+        return lhs_ranking  # Physics was right
+    elif agent_decision == 'trust_surrogate':
+        return surrogate_ranking  # Data says otherwise
+    else:
+        # Hybrid: weight both
+        return 0.6 * lhs_ranking + 0.4 * surrogate_ranking
 ```
 
 ---
 
-## Complete Agent-BO Loop
+## Complete Progressive Tool Adoption Loop
 
 ```
-Iteration 1-3: Random Initial Points (establish baseline)
-    ↓
-Agent: "Let me fit surrogate models and understand the landscape"
-    ├─ fit_gp_surrogate()
-    ├─ fit_dnn_surrogate()
-    └─ fit_pinn_surrogate()
-    ↓
-Agent: "All three agree that region X is promising, region Y is poor"
-    ├─ compute_expected_improvement()
-    ├─ compute_uncertainty()
-    └─ refine_lhs_ranking()
-    ↓
-Agent: "I should explore the disagreement region (DNN vs PINN) 
-         because high uncertainty = potential discovery"
-    ↓
-Select next config based on agent reasoning
-    ↓
-Run IPOPT → get J value
-    ↓
-Update history, loop
-    ↓
-Iteration N: "Improvement rate slowing. Should we refine or restart?"
-    ├─ Agent analyzes convergence
-    ├─ Retrain surrogates
-    └─ Decide: exploit current best or explore elsewhere
-    ↓
-Repeat until time budget exhausted
+EARLY PHASE (Iterations 1-100):
+    ├─ Iteration 1-5: Random initial points
+    │
+    ├─ Iteration 6-100: Use GP Only
+    │  ├─ Agent: "Fit GP to observations"
+    │  ├─ Compute Expected Improvement
+    │  ├─ Select config with highest EI
+    │  └─ IPOPT solve → J value
+    │
+    └─ Iteration 100: DECISION POINT
+       Agent: "I have 100 observations. Try DNN?"
+       ├─ Train DNN on 100 obs (first time)
+       ├─ Validate DNN on hold-out test set
+       ├─ Compare: DNN accuracy vs GP accuracy
+       └─ Decide: Switch to DNN or stay with GP?
+
+MIDDLE PHASE (Iterations 101-200):
+    ├─ If DNN won: Use DNN for EI computation
+    │  ├─ DNN is more flexible (captures nonlinearity)
+    │  ├─ Retrain DNN every 10 iterations with new data
+    │  └─ IPOPT solve on DNN-suggested configs
+    │
+    ├─ If GP won: Continue with GP
+    │  ├─ Agent may try PINN at iteration 200
+    │  └─ Same test-and-decide procedure
+    │
+    └─ Agent learns: "Which tool is most accurate for this problem?"
+
+LATE PHASE (Iterations 200+):
+    ├─ Use best-proven tool
+    │  (whatever won: GP, DNN, or PINN)
+    │
+    ├─ Agent now confident in its understanding
+    │  ├─ Refine LHS ranking with high confidence
+    │  ├─ Explain which NC families are best
+    │  └─ Adjust exploration vs exploitation
+    │
+    └─ Final iterations: Exploit best region
+       (or explore remaining unexplored configs if uncertainty high)
+
+TOTAL: ~8-40 iterations in 11h budget
+Tool cost: GP (~100 iterations), DNN (~100 iterations), PINN (~50 iterations)
 ```
 
 ---
@@ -440,19 +524,21 @@ Agent: "Last 5 evaluations improved by: [+2.1, +0.5, +0.1, +0.0, -0.3]
 
 ---
 
-## Advantages vs Pure BO+GP / BO+DNN / BO+PINN
+## Advantages: Progressive Tool Adoption vs Fixed Tools
 
-| Feature | Pure BO+GP | Pure BO+DNN | Pure BO+PINN | Agent-Orchestrated |
+| Feature | Pure BO+GP | Pure BO+DNN | Pure BO+PINN | Agent-Progressive |
 |---------|-----------|-----------|-------------|------------------|
-| **Tool adaptivity** | Fixed (GP only) | Fixed (DNN only) | Fixed (PINN only) | ✅ Chooses best tool |
-| **Uncertainty-aware** | ✅ Natural | ⚠️ MC dropout | ✅ PINN uncertainty | ✅ All three + meta |
+| **Tool choice** | Fixed (GP) | Fixed (DNN) | Fixed (PINN) | ✅ Optimal per phase |
+| **Training cost** | Low (fast) | High (slow) | Very high | ✅ Low (only when ready) |
+| **Data efficiency** | Good (small) | Poor (needs >100 obs) | Poor (needs >200 obs) | ✅ Always adequate |
 | **Reasoning** | ❌ Black-box | ❌ Black-box | ❌ Black-box | ✅ Agent explains |
-| **Physics enforcement** | ❌ | ❌ | ✅ | ✅ Via PINN tool |
-| **Ensemble** | ❌ | ❌ | ❌ | ✅ Ensemble method |
-| **Adaptive strategy** | ❌ Fixed EI | ❌ Fixed loss | ❌ Fixed losses | ✅ Agent adjusts |
-| **LHS refinement** | ❌ Ignores | ❌ Ignores | ❌ Ignores | ✅ Refines ranking |
-| **Complexity** | Low | Medium | High | **Very High** |
-| **Expected best J** | 50-60 | 52-62 | 54-64 | **56-66** |
+| **Convergence** | Steady | Risky (overfitting <100) | Risky (insufficient data) | ✅ Safe then better |
+| **LHS refinement** | ❌ Ignores | ❌ Ignores | ❌ Ignores | ✅ When confident |
+| **Adaptivity** | Fixed | Fixed | Fixed | ✅ Tests → switches |
+| **Complexity** | Low | Medium | High | **Medium** (adaptive) |
+| **Wall-clock time** | Fast | Slowest | Slower | **Fast** (GP phase) then optimal |
+| **Expected best J** | 50-60 | 52-62 | 54-64 | **55-65** (safer) |
+| **Risk of failure** | Low | Medium (overfitting) | Medium (training) | **Very low** (fallback to GP) |
 
 ---
 
