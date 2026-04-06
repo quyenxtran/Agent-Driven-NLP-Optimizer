@@ -85,11 +85,11 @@ echo "  • Serves as foundation for all Phase 3 strategies"
 echo "  • Estimated runtime: ~12 hours (4x speedup: 47 hours → 12 hours)"
 echo ""
 
-echo "Running Phase 2 with PARALLEL seed optimization..."
-echo "Strategy: 4 workers in parallel, each with OMP_NUM_THREADS=2"
-echo "Configuration: 4 seeds optimize simultaneously (4 × 2 threads = 8 CPUs)"
-echo "Expected speedup: 4x (47 hours → ~12 hours)"
-"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_parallel_seeds \
+echo "Running Phase 2 with STOCHASTIC parallel seed optimization..."
+echo "Strategy: 12 workers in parallel, each with OMP_NUM_THREADS=2"
+echo "Configuration: 12 seeds optimize simultaneously (12 × 2 threads = 24 CPUs, but only 8 available)"
+echo "Uses phase2_parallel_stochastic.py (supports fidelity parameters)"
+"${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase2_parallel_stochastic \
   --ncs "[1,1,2,4]" "[1,1,3,3]" "[1,1,4,2]" "[1,2,1,4]" "[1,2,4,1]" \
          "[1,3,1,3]" "[1,3,2,2]" "[2,1,2,3]" "[2,2,1,3]" "[2,2,2,2]" \
          "[1,1,1,5]" "[1,1,5,1]" "[1,5,1,1]" "[5,1,1,1]" "[1,2,2,3]" \
@@ -105,8 +105,7 @@ echo "Expected speedup: 4x (47 hours → ~12 hours)"
   --nfet 2 \
   --ncp 1 \
   --purity-min 0.15 \
-  --recovery-ga-min 0.15 \
-  --recovery-ma-min 0.15 \
+  --recovery-min 0.15 \
   --verbose
 
 EXIT_CODE=$?
