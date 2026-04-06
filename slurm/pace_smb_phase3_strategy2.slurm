@@ -7,7 +7,7 @@
 #SBATCH -p cpu-container
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=04:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
@@ -32,7 +32,7 @@ export METIS_LIBDIR="${METIS_LIBDIR:-/usr/local/pace-apps/manual/packages/fenics
 export PATH="$IPOPT_BIN_DIR:${REPO_ROOT}/.venv/bin:${PATH}"
 export LD_LIBRARY_PATH="$IPOPT_LIB_DIR:$OPENBLAS_LIBDIR:$METIS_LIBDIR:${LD_LIBRARY_PATH:-}"
 export SMB_HSL_LIB="$IPOPT_LIB_DIR/libcoinhsl.so"
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-8}}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=spread
 export OMP_PLACES=cores
