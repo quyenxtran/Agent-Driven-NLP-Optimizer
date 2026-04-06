@@ -10,7 +10,7 @@
 #SBATCH -p cpu-small
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=24
 #SBATCH --mem=32G
 #SBATCH --time=01:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
@@ -36,7 +36,7 @@ export PATH="$IPOPT_BIN_DIR:${REPO_ROOT}/.venv/bin:${PATH}"
 export LD_LIBRARY_PATH="$IPOPT_LIB_DIR:$OPENBLAS_LIBDIR:$METIS_LIBDIR:${LD_LIBRARY_PATH:-}"
 export SMB_HSL_LIB="$IPOPT_LIB_DIR/libcoinhsl.so"
 
-# Parallel configuration: 4 workers × 2 MA97 threads each = 8 CPUs total
+# Parallel configuration: 12 workers × 2 MA97 threads each = 24 CPUs total
 export OMP_NUM_THREADS=2  # Each worker gets 2 threads for MA97
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=spread
@@ -54,7 +54,7 @@ echo "════════════════════════�
 echo "PHASE 2: REFERENCE EVALUATION WITH 5D LHS SAMPLING"
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo "Job: ${SLURM_JOB_ID:-local}"
-echo "CPUs: ${SLURM_CPUS_PER_TASK:-8} (MA97 multi-threaded)"
+echo "CPUs: ${SLURM_CPUS_PER_TASK:-24} (MA97 multi-threaded)"
 echo "Memory: 32G"
 echo "Time: 1 hour"
 echo ""
@@ -73,16 +73,16 @@ echo "    • Evaluate at fixed flows with no optimization"
 echo "    • Medium fidelity: nfex=6, nfet=3, ncp=1"
 echo ""
 echo "  Parallelization:"
-echo "    • 4 workers in ProcessPoolExecutor (Python multiprocessing)"
+echo "    • 12 workers in ProcessPoolExecutor (Python multiprocessing)"
 echo "    • Each worker: OMP_NUM_THREADS=2 (2 CPUs per worker)"
-echo "    • Result: 4 seeds evaluate simultaneously"
-echo "    • Total CPUs used: 4 workers × 2 threads = 8 CPUs"
+echo "    • Result: 12 seeds evaluate simultaneously"
+echo "    • Total CPUs used: 12 workers × 2 threads = 24 CPUs"
 echo ""
 echo "Expected Output:"
 echo "  • 32 NCs × 25 seeds = 800 total reference evaluations"
 echo "  • Expected ~75% success rate (600 feasible solutions)"
 echo "  • Deterministic results (fixed flows, no solver exploration)"
-echo "  • Estimated runtime: ~30-45 minutes"
+echo "  • Estimated runtime: ~10-15 minutes (12 workers = 3x speedup)"
 echo ""
 
 echo "Running Phase 2 Reference Evaluation with 5D LHS sampling..."
@@ -97,7 +97,7 @@ echo "Running Phase 2 Reference Evaluation with 5D LHS sampling..."
   --n-seeds 25 \
   --artifact-dir "$ARTIFACT_DIR" \
   --timeout 120 \
-  --n-workers 4 \
+  --n-workers 12 \
   --nfex 6 \
   --nfet 3 \
   --ncp 1 \
