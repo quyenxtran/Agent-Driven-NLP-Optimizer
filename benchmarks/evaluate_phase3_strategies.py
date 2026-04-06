@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
@@ -350,16 +351,16 @@ def main():
     print("PHASE 3 COMPARATIVE STUDY ORCHESTRATOR")
     print(f"{'='*70}")
 
-    phase2_file = (
-        REPO_ROOT / "artifacts" / "phase2_lhs_seeding" / "phase2_summary.json"
-    )
+    phase2_dir = REPO_ROOT / "artifacts" / "phase2_lhs_seeding"
+    has_legacy = (phase2_dir / "phase2_summary.json").exists()
+    has_reference = any(phase2_dir.glob("reference-eval.*.phase2_ref_nc_*.json"))
 
-    if not phase2_file.exists():
-        print(f"\n⏳ Waiting for Phase 2 data: {phase2_file}")
-        print("   (Run Phase 2 first: python -m benchmarks.phase2_lhs_seeding)")
+    if not (has_legacy or has_reference):
+        print(f"\n⏳ Waiting for Phase 2 data under: {phase2_dir}")
+        print("   (Need either legacy phase2_summary.json or raw reference-eval seed artifacts)")
         return 1
 
-    print(f"✓ Phase 2 data found: {phase2_file}")
+    print(f"✓ Phase 2 data source found under: {phase2_dir}")
 
     # Create output directory
     output_dir = REPO_ROOT / "artifacts" / "phase3_results"

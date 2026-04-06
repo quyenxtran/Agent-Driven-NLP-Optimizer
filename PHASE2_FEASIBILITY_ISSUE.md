@@ -1,3 +1,19 @@
+# PHASE2_FEASIBILITY_ISSUE.md
+
+Archived investigation note.
+
+This file captures earlier debugging around infeasibility in a previous Phase 2 approach.
+
+## Current source of truth
+- Read **`PLAN.md`** for the reconciled active workflow.
+
+## Why this file is archived
+It remains useful as debugging history, but it does not describe the current live production run.
+
+---
+
+# Original archived content
+
 # Phase 2 Feasibility Issue - Investigation & Options
 
 **Issue Found:** Job 6282883 achieving **0% feasibility rate** (100 seeds on NC [1,1,2,4])

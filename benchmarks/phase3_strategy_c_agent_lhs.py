@@ -18,13 +18,10 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-
-def load_phase2_data(phase2_file: Path) -> Dict:
-    """Load Phase 2 summary data."""
-    with open(phase2_file) as f:
-        return json.load(f)
+from benchmarks.phase3_data_adapter import load_phase3_ready_data
 
 
 def compute_zone_distribution(nc: Tuple) -> Dict:
@@ -157,11 +154,11 @@ def analyze_landscape(nc_result: Dict) -> Dict:
     }
 
 
-def run_strategy_c(phase2_file: Path) -> Dict:
+def run_strategy_c(phase2_file: Path | None = None) -> Dict:
     """
     Run Strategy C: Agent-Guided LHS with Domain Knowledge.
 
-    1. Load Phase 2 data
+    1. Load normalized Phase 2 / reference-eval data
     2. For each NC: analyze landscape + add domain bonus
     3. Compute portfolio score combining exploitation + exploration potential
     4. Select: 3 exploitation picks (high base, low exploration potential)
@@ -172,8 +169,8 @@ def run_strategy_c(phase2_file: Path) -> Dict:
     print("=" * 70)
 
     # Load data
-    print(f"\nLoading Phase 2 data from {phase2_file}...")
-    phase2_data = load_phase2_data(phase2_file)
+    print("\nLoading normalized Phase 2 / reference-eval data...")
+    phase2_data = load_phase3_ready_data()
 
     results = phase2_data.get("results", [])
     print(f"Found {len(results)} NCs in Phase 2 data")
@@ -319,14 +316,8 @@ def run_strategy_c(phase2_file: Path) -> Dict:
 
 
 def main():
-    phase2_file = REPO_ROOT / "artifacts" / "phase2_lhs_seeding" / "phase2_summary.json"
-
-    if not phase2_file.exists():
-        print(f"✗ Phase 2 data not found: {phase2_file}")
-        sys.exit(1)
-
     # Run strategy
-    results = run_strategy_c(phase2_file)
+    results = run_strategy_c()
 
     # Save results
     output_file = (

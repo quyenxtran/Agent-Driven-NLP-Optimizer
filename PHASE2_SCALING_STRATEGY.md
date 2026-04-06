@@ -1,3 +1,19 @@
+# PHASE2_SCALING_STRATEGY.md
+
+Archived implementation note.
+
+This file records earlier scaling ideas for a prior Phase 2 variant.
+
+## Current source of truth
+- Read **`PLAN.md`** for the reconciled active workflow.
+
+## Why this file is archived
+It is still useful reference material, but it is not the current canonical execution plan.
+
+---
+
+# Original archived content
+
 # Phase 2 Scaling Strategy: 8 CPUs vs 24 CPUs
 
 ## Current Job (Job 6282883): 8 CPUs - Keep Running ✅

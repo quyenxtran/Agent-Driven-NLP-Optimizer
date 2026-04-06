@@ -1,3 +1,19 @@
+# PHASE2_OPTIONS_GUIDE.md
+
+Archived design/options note.
+
+This file records earlier branching options for Phase 2 and should be treated as historical planning context, not the active plan.
+
+## Current source of truth
+- Read **`PLAN.md`** for the reconciled active workflow.
+
+## Why this file is archived
+It documents alternative Phase 2 paths considered during iteration, but the live project has since converged on a different active execution path.
+
+---
+
+# Original archived content
+
 # Phase 2 Options Implementation Guide
 
 **Status:** Job 6282883 cancelled. Ready to implement Options B, C, or D.
