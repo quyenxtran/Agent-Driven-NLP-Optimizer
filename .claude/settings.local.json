@@ -78,16 +78,8 @@
       "Bash(ls -1 frontier_results/interaction_test_*/reports/hybrid_gatv2_svm_loao_per_acid.csv)",
       "Bash(git commit -m 'Add experiment closure report - conclusive results despite job timeout:*)",
       "Bash(rm -f /storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/.git/index.lock)",
-      "Bash(chmod +x /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/slurm/pace_smb_phase2_reference_eval.slurm)",
-      "Bash(chmod +x /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/benchmarks/phase2_reference_evaluation.py)",
-      "Bash(python -m benchmarks.phase2_reference_evaluation --ncs \"[1,1,2,4]\" --n-seeds 3 --n-workers 1 --artifact-dir \"/tmp/test_phase2\")",
-      "Bash(scancel 6287839)",
-      "Bash(sbatch /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/slurm/pace_smb_phase2_reference_eval.slurm)",
-      "Bash(git commit -m 'Update Phase 2 to use 24 CPUs with 12 workers:*)",
-      "Bash(scancel 6288977)",
-      "Bash(sbatch slurm/pace_smb_phase2_reference_eval.slurm)",
-      "Bash(tail -40 /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/logs/smb-phase2-ref-*.out)",
-      "Bash(ls -lht /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/logs/smb-phase2-ref*)"
+      "Bash(ls -la /storage/home/hcoda1/4/qtran47/AC_Adsorption_ML/*.csv)",
+      "Bash(wc -l /storage/home/hcoda1/4/qtran47/AutoResearch-SMB/logs/smb-phase3-s*.out)"
     ]
   }
 }
