@@ -19,7 +19,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "benchmarks"))
 
-from benchmarks.phase3_multistart_utils import run_high_fidelity_once, summarize_multistart
+from benchmarks.phase3_multistart_utils import run_high_fidelity_once, run_promotion_once, summarize_multistart
 
 
 def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
@@ -57,8 +57,8 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
     for i, (nc, prod) in enumerate(top_5_ncs, 1):
         print(f"    {i}. NC {list(nc)}: J≈{prod:.2f}")
 
-    # Optimize each with high fidelity
-    print(f"\nOptimizing top 5 with high fidelity (nfex=10, nfet=5; relaxed promotion thresholds)...")
+    # Promote each candidate with medium-fidelity optimization
+    print(f"\nPromoting top 5 with medium fidelity (nfex=6, nfet=3, ncp=1; relaxed thresholds)...")
     results = []
     for i, (nc, screen_prod) in enumerate(top_5_ncs):
         nc_list = list(nc)
@@ -66,7 +66,7 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
 
         print(f"  [{i+1}/5] NC {nc_list}...", end=" ", flush=True)
 
-        result = run_high_fidelity_once(nc_list, run_name, artifact_dir, start_index=0)
+        result = run_promotion_once(nc_list, run_name, artifact_dir, start_index=0)
         results.append(result)
 
         if result["status"] == "ok":
@@ -90,7 +90,7 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
         print(f"Recovery GA: {best['recovery_ga']:.4f}")
 
         finalist = best["nc"]
-        print(f"\nRunning 3 multi-start high-fidelity validations on finalist {finalist}...")
+        print(f"\nRunning 3 finalist validation runs on promoted winner {finalist}...")
         multistart_results = []
         for start_idx in range(3):
             ms_name = f"phase3_s1_finalist_{finalist[0]}{finalist[1]}{finalist[2]}{finalist[3]}_ms{start_idx}"

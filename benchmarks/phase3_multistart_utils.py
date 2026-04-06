@@ -141,6 +141,32 @@ def run_high_fidelity_once(
         }
 
 
+def run_promotion_once(
+    nc: List[int],
+    run_name: str,
+    artifact_dir: str,
+    start_index: int = 0,
+) -> Dict:
+    """Phase 3 promotion solve at medium fidelity.
+
+    Use a cheaper/more forgiving promotion stage for the top-5 screening winners,
+    then reserve strict expensive validation for later stages.
+    """
+    return run_high_fidelity_once(
+        nc=nc,
+        run_name=run_name,
+        artifact_dir=artifact_dir,
+        start_index=start_index,
+        nfex=6,
+        nfet=3,
+        ncp=1,
+        purity_min=0.05,
+        recovery_ga_min=0.10,
+        recovery_ma_min=0.15,
+        timeout=1800,
+    )
+
+
 def summarize_multistart(results: List[Dict]) -> Dict:
     ok = [r for r in results if r.get("status") == "ok" and r.get("productivity") is not None]
     vals = [float(r["productivity"]) for r in ok]
