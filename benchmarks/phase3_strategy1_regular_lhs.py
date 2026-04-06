@@ -10,67 +10,16 @@ Expected: Lowest best J (baseline)
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import List, Dict
 
 REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "benchmarks"))
 
-
-def optimize_high_fidelity(nc: List[int], run_name: str, artifact_dir: str) -> Dict:
-    """Run high-fidelity optimization on a single NC"""
-    nc_str = f"[{nc[0]},{nc[1]},{nc[2]},{nc[3]}]"
-
-    cmd = [
-        sys.executable, "-m", "benchmarks.run_stage",
-        "--stage", "optimize-layouts",
-        "--run-name", run_name,
-        "--artifact-dir", artifact_dir,
-        "--nc", nc_str,
-        "--solver-name", "auto",
-        "--linear-solver", "ma97",
-        "--nfex", "10",  # High fidelity
-        "--nfet", "5",
-        "--ncp", "2",
-        "--purity-min", "0.20",
-        "--recovery-ga-min", "0.20",
-        "--recovery-ma-min", "0.20",
-        "--max-pump-flow", "3.0",
-    ]
-
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=str(REPO_ROOT),
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-
-        if result.returncode == 0:
-            for line in result.stdout.split('\n'):
-                if '"artifact"' in line:
-                    artifact_path = json.loads(line).get('artifact')
-                    if artifact_path and Path(artifact_path).exists():
-                        with open(artifact_path) as f:
-                            artifact = json.load(f)
-                        return {
-                            "status": "ok",
-                            "nc": nc,
-                            "productivity": artifact.get("J_validated"),
-                            "purity": artifact.get("metrics", {}).get("purity_ex_meoh_free"),
-                            "recovery_ga": artifact.get("metrics", {}).get("recovery_ex_GA"),
-                        }
-
-        return {"status": "error", "nc": nc, "error": result.stderr[:200]}
-
-    except subprocess.TimeoutExpired:
-        return {"status": "timeout", "nc": nc}
-    except Exception as e:
-        return {"status": "exception", "nc": nc, "error": str(e)}
+from benchmarks.phase3_multistart_utils import run_high_fidelity_once, summarize_multistart
 
 
 def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
@@ -116,7 +65,7 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
 
         print(f"  [{i+1}/5] NC {nc_list}...", end=" ", flush=True)
 
-        result = optimize_high_fidelity(nc_list, run_name, artifact_dir)
+        result = run_high_fidelity_once(nc_list, run_name, artifact_dir, start_index=0)
         results.append(result)
 
         if result["status"] == "ok":
@@ -138,6 +87,20 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
         print(f"Purity: {best['purity']:.4f}")
         print(f"Recovery GA: {best['recovery_ga']:.4f}")
 
+        finalist = best["nc"]
+        print(f"\nRunning 3 multi-start high-fidelity validations on finalist {finalist}...")
+        multistart_results = []
+        for start_idx in range(3):
+            ms_name = f"phase3_s1_finalist_{finalist[0]}{finalist[1]}{finalist[2]}{finalist[3]}_ms{start_idx}"
+            ms_result = run_high_fidelity_once(finalist, ms_name, artifact_dir, start_index=start_idx)
+            multistart_results.append(ms_result)
+            if ms_result["status"] == "ok":
+                print(f"  multi-start {start_idx}: ✓ J={ms_result.get('productivity', 0):.4f}")
+            else:
+                print(f"  multi-start {start_idx}: ✗ {ms_result['status']}")
+
+        multistart_summary = summarize_multistart(multistart_results)
+
         return {
             "strategy": "Regular LHS",
             "best_config": best["nc"],
@@ -146,6 +109,11 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
             "recovery_ga": best.get("recovery_ga"),
             "n_optimizations": len(valid_results),
             "results": results,
+            "finalist_multistart": {
+                "nc": finalist,
+                "results": multistart_results,
+                "summary": multistart_summary,
+            },
         }
     else:
         print(f"\n✗ All optimizations failed")

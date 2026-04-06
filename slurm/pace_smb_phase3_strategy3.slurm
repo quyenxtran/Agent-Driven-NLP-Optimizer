@@ -9,7 +9,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -46,6 +46,7 @@ mkdir -p logs artifacts/phase3_strategy3
 
 echo "═══════════════════════════════════════════════════════════════════════════"
 echo "PHASE 3 STRATEGY 3: Agent + LHS (Intelligent Heuristics)"
+echo "Workflow: top 5 → one high-fidelity run each → finalist multi-start"
 echo "═══════════════════════════════════════════════════════════════════════════"
 
 "${REPO_ROOT}/.venv/bin/python" -m benchmarks.phase3_strategy3_agent_lhs \

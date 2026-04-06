@@ -1,6 +1,6 @@
 #!/bin/bash
 # Phase 3 Strategy 1: Regular LHS
-# Baseline: Screen all → select top 5 distinct → optimize
+# Baseline: select top 5 → one high-fidelity run each → multi-start on finalist
 # Expected: Lowest best J (baseline for comparison)
 
 #SBATCH --job-name=smb-phase3-s1
@@ -11,7 +11,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
 #SBATCH --mail-type=END,FAIL
 #SBATCH --output=logs/%x-%j.out
@@ -57,8 +57,9 @@ echo "Approach:"
 echo "  1. Load Phase 2B screening data (~300-350 feasible seeds)"
 echo "  2. Rank all NCs by screening productivity"
 echo "  3. Select top 5 DISTINCT NCs"
-echo "  4. Optimize each with HIGH fidelity (nfex=10, nfet=5, ncp=2)"
-echo "  5. Return best J"
+echo "  4. Run one HIGH-fidelity optimization for each selected NC"
+echo "  5. Promote the single best NC"
+echo "  6. Run 3 multi-start high-fidelity validations on that finalist"
 echo ""
 echo "Purpose: Baseline (no intelligence) for comparison"
 echo ""

@@ -14,14 +14,16 @@ Expected: Moderate best J (single method, no agent)
 
 import argparse
 import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import List, Dict
 
 REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "benchmarks"))
+
+from benchmarks.phase3_multistart_utils import run_high_fidelity_once, summarize_multistart
 
 
 def get_valid_ncs() -> List[List[int]]:
@@ -178,7 +180,7 @@ def run_strategy2(screening_data: List[Dict], artifact_dir: str) -> Dict:
 
         print(f"  [{i+1}/5] NC {nc_list}...", end=" ", flush=True)
 
-        result = optimize_high_fidelity(nc_list, run_name, artifact_dir)
+        result = run_high_fidelity_once(nc_list, run_name, artifact_dir, start_index=0)
         results.append(result)
 
         if result["status"] == "ok":
@@ -199,6 +201,20 @@ def run_strategy2(screening_data: List[Dict], artifact_dir: str) -> Dict:
         print(f"Purity: {best['purity']:.4f}")
         print(f"Recovery GA: {best['recovery_ga']:.4f}")
 
+        finalist = best["nc"]
+        print(f"\nRunning 3 multi-start high-fidelity validations on finalist {finalist}...")
+        multistart_results = []
+        for start_idx in range(3):
+            ms_name = f"phase3_s2_finalist_{finalist[0]}{finalist[1]}{finalist[2]}{finalist[3]}_ms{start_idx}"
+            ms_result = run_high_fidelity_once(finalist, ms_name, artifact_dir, start_index=start_idx)
+            multistart_results.append(ms_result)
+            if ms_result["status"] == "ok":
+                print(f"  multi-start {start_idx}: ✓ J={ms_result.get('productivity', 0):.4f}")
+            else:
+                print(f"  multi-start {start_idx}: ✗ {ms_result['status']}")
+
+        multistart_summary = summarize_multistart(multistart_results)
+
         return {
             "strategy": "BO Baseline (Single GP)",
             "best_config": best["nc"],
@@ -207,6 +223,11 @@ def run_strategy2(screening_data: List[Dict], artifact_dir: str) -> Dict:
             "recovery_ga": best.get("recovery_ga"),
             "n_optimizations": len(valid_results),
             "results": results,
+            "finalist_multistart": {
+                "nc": finalist,
+                "results": multistart_results,
+                "summary": multistart_summary,
+            },
             "gp_stats": {
                 "n_training_points": len(X_train),
                 "mean_prediction": float(np.mean(y_pred)),
