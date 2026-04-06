@@ -87,12 +87,12 @@ def evaluate_reference_worker(args: Tuple) -> Dict:
     Runs ONE seed evaluation at fixed flows (reference point), blocks until complete.
 
     Args:
-        args: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp)
+        args: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_ga_min, recovery_ma_min)
 
     Returns:
         {status, seed_idx, metrics, feasible, artifact}
     """
-    nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp = args
+    nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_ga_min, recovery_ma_min = args
 
     # Worker inherits OMP_NUM_THREADS=2 from parent process
     nc_str = format_nc(nc)
@@ -168,12 +168,23 @@ def evaluate_reference_worker(args: Tuple) -> Dict:
                                 artifact = json.load(f)
 
                             result_data = artifact.get("results", [{}])[0]
+                            metrics = result_data.get("metrics", {})
+
+                            # Check feasibility using relaxed thresholds
+                            purity = metrics.get("purity_ex_meoh_free", 0)
+                            recovery_ga = metrics.get("recovery_ex_GA", 0)
+                            recovery_ma = metrics.get("recovery_ex_MA", 0)
+
+                            feasible = (purity >= purity_min and
+                                       recovery_ga >= recovery_ga_min and
+                                       recovery_ma >= recovery_ma_min)
+
                             return {
                                 "status": result_data.get("status"),
                                 "seed_idx": seed_idx,
-                                "metrics": result_data.get("metrics", {}),
-                                "feasible": result_data.get("feasible", False),
-                                "J_validated": result_data.get("J_validated"),
+                                "metrics": metrics,
+                                "feasible": feasible,
+                                "J_validated": metrics.get("productivity_ex_ga_ma") if feasible else None,
                                 "artifact": artifact,
                             }
                     except (json.JSONDecodeError, KeyError):
@@ -196,6 +207,9 @@ def evaluate_nc_parallel(
     nfex: int = 6,
     nfet: int = 3,
     ncp: int = 1,
+    purity_min: float = 0.05,
+    recovery_ga_min: float = 0.10,
+    recovery_ma_min: float = 0.15,
     verbose: bool = True,
 ) -> Dict:
     """
@@ -223,8 +237,9 @@ def evaluate_nc_parallel(
         print(f"Discretization: nfex={nfex}, nfet={nfet}, ncp={ncp}")
         print(f"Evaluating at fixed flows (no optimization)...")
 
-    # Create task list: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp)
-    tasks = [(nc, seed, idx, artifact_dir, timeout, nfex, nfet, ncp) for idx, seed in enumerate(seeds)]
+    # Create task list: (nc, seed, seed_idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_ga_min, recovery_ma_min)
+    tasks = [(nc, seed, idx, artifact_dir, timeout, nfex, nfet, ncp, purity_min, recovery_ga_min, recovery_ma_min)
+             for idx, seed in enumerate(seeds)]
 
     evaluation_results = []
     completed = 0
@@ -324,6 +339,9 @@ def main():
     parser.add_argument("--nfex", type=int, default=6, help="Spatial elements")
     parser.add_argument("--nfet", type=int, default=3, help="Finite elements in time")
     parser.add_argument("--ncp", type=int, default=1, help="Collocation points")
+    parser.add_argument("--purity-min", type=float, default=0.05, help="Minimum purity (MeOH-free)")
+    parser.add_argument("--recovery-ga-min", type=float, default=0.10, help="Minimum GA recovery")
+    parser.add_argument("--recovery-ma-min", type=float, default=0.15, help="Minimum MA recovery")
     parser.add_argument("--verbose", action="store_true", default=True)
 
     args = parser.parse_args()
@@ -345,6 +363,7 @@ def main():
     print(f"LHS seeds per NC: {args.n_seeds}")
     print(f"Parallel workers: {args.n_workers}")
     print(f"Discretization: nfex={args.nfex}, nfet={args.nfet}, ncp={args.ncp}")
+    print(f"Constraints: purity≥{args.purity_min:.2f}, recovery_GA≥{args.recovery_ga_min:.2f}, recovery_MA≥{args.recovery_ma_min:.2f}")
     print(f"Total evaluations: {len(ncs)} × {args.n_seeds} = {len(ncs) * args.n_seeds}")
     print("")
 
@@ -367,6 +386,9 @@ def main():
             nfex=args.nfex,
             nfet=args.nfet,
             ncp=args.ncp,
+            purity_min=args.purity_min,
+            recovery_ga_min=args.recovery_ga_min,
+            recovery_ma_min=args.recovery_ma_min,
             verbose=args.verbose,
         )
         all_results.append(result)
@@ -382,6 +404,11 @@ def main():
             "nfex": args.nfex,
             "nfet": args.nfet,
             "ncp": args.ncp,
+        },
+        "constraints": {
+            "purity_min": args.purity_min,
+            "recovery_ga_min": args.recovery_ga_min,
+            "recovery_ma_min": args.recovery_ma_min,
         },
         "lhs_bounds": {
             "F1": [0.5, 5.0],

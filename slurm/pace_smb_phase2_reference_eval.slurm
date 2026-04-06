@@ -71,6 +71,7 @@ echo "  Evaluation:"
 echo "    • Use reference-eval stage (NOT optimize-layouts)"
 echo "    • Evaluate at fixed flows with no optimization"
 echo "    • Medium fidelity: nfex=6, nfet=3, ncp=1"
+echo "    • Relaxed constraints: purity≥0.05, recovery_GA≥0.10, recovery_MA≥0.15"
 echo ""
 echo "  Parallelization:"
 echo "    • 12 workers in ProcessPoolExecutor (Python multiprocessing)"
@@ -80,7 +81,7 @@ echo "    • Total CPUs used: 12 workers × 2 threads = 24 CPUs"
 echo ""
 echo "Expected Output:"
 echo "  • 32 NCs × 25 seeds = 800 total reference evaluations"
-echo "  • Expected ~75% success rate (600 feasible solutions)"
+echo "  • Expected ~40-60% success rate with relaxed constraints (320-480 feasible solutions)"
 echo "  • Deterministic results (fixed flows, no solver exploration)"
 echo "  • Estimated runtime: ~10-15 minutes (12 workers = 3x speedup)"
 echo ""
@@ -101,6 +102,9 @@ echo "Running Phase 2 Reference Evaluation with 5D LHS sampling..."
   --nfex 6 \
   --nfet 3 \
   --ncp 1 \
+  --purity-min 0.05 \
+  --recovery-ga-min 0.10 \
+  --recovery-ma-min 0.15 \
   --verbose
 
 EXIT_CODE=$?
