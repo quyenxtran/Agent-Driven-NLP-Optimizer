@@ -1029,7 +1029,7 @@ def run_parallel_stage_tasks(
     return [item if isinstance(item, dict) else {"status": "error", "error": "missing_result"} for item in results]
 
 
-def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int], *, return_model_state: bool = False) -> Dict[str, object]:
+def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int], *, return_model_state: bool = False, warm_start_state: Dict[str, object] | None = None) -> Dict[str, object]:
     from sembasmb import (  # type: ignore
         apply_discretization,
         build_inputs,
@@ -1078,6 +1078,14 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int], *, return_mo
     inputs = build_inputs(config, flow)
     m = build_model(config, inputs)
     apply_discretization(m, config, inputs)
+
+    # Apply warm-start state if provided (e.g., from Phase 2 reference eval)
+    if warm_start_state is not None:
+        try:
+            apply_warm_start_state(m, warm_start_state)
+        except Exception:
+            pass  # Non-critical — proceed with default initialization
+
     solve_exc: Exception | None = None
     results = None
     try:
