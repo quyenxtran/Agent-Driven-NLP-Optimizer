@@ -27,6 +27,7 @@ SMB_ROOT = REPO_ROOT / "src"
 if str(SMB_ROOT) not in sys.path:
     sys.path.insert(0, str(SMB_ROOT))
 
+from sembasmb import FlowRates  # type: ignore
 
 REFERENCE_LAYOUT = (1, 2, 3, 2)
 REFERENCE_WT0 = (0.003, 0.004, 0.990, 0.003)
@@ -557,8 +558,6 @@ def load_config(args: argparse.Namespace, nc: Sequence[int]) -> SMBConfig:
 
 
 def build_flow(args: argparse.Namespace) -> FlowRates:
-    from sembasmb import FlowRates  # type: ignore
-
     fraf = args.fraf if args.fraf is not None else derive_fraf(args.ffeed, args.fdes, args.fex)
     return FlowRates(
         F1=args.f1,
