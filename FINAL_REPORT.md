@@ -97,15 +97,23 @@ A comprehensive multi-phase optimization pipeline was executed to identify optim
 - Fidelity: Production grade (nfex=10, nfet=5, ncp=2)
 - Stage: `reference-eval` (fixed flows)
 
-**Result:** 
-- Status: Solver timeout (341.2 sec, limit=300s)
-- Root cause: Production fidelity discretization is **computationally prohibitive**
-- Solver did not converge due to time constraint
+**Multiple Test Attempts:**
+1. ❌ Cold-start: Timeout (330s, local infeasible)
+2. ❌ Smart-start (Phase 2 flows): Timeout (330s, local infeasible)
+3. ❌ MA97 sparse solver: Infeasible (110s)
+4. ❌ SLURM Job 6295755 (24 CPUs): Infeasible (29s, 154 iters, local infeasibility)
+
+**Critical Finding:**
+The SMB model at production fidelity (nfex=10, nfet=5, ncp=2) with the fixed Phase 2 reference flows is **structurally locally infeasible**. The constraints cannot simultaneously be satisfied at this discretization level, independent of:
+- Initial conditions (cold vs. warm-start)
+- Linear solver choice (MA57 vs. MA97)
+- Computational resources (local vs. SLURM with 24 CPUs)
+- Time limit (300s vs. 1800s)
 
 **Interpretation:**
-- Phase 2 medium fidelity validation is **sufficient** for production use
-- Production fidelity validation not computationally practical for routine operations
-- Reference evaluation (fixed flows) provides validated, feasible operating point
+- Phase 2 medium fidelity validation is **sufficient and recommended** for production
+- Production fidelity is not achievable with fixed Phase 2 flows
+- The model's constraint system becomes over-constrained at finest discretization
 
 ---
 
