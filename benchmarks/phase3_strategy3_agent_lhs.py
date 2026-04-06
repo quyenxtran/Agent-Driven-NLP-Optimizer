@@ -125,9 +125,21 @@ def run_strategy3(screening_data: List[Dict], artifact_dir: str) -> Dict:
             continue
 
         # Extract metrics
-        prods = [p["metrics"].get("productivity") for p in nc_data if p["metrics"].get("productivity")]
-        purities = [p["metrics"].get("purity") for p in nc_data if p["metrics"].get("purity")]
-        recoveries = [p["metrics"].get("recovery_ga") for p in nc_data if p["metrics"].get("recovery_ga")]
+        prods = [
+            p["metrics"].get("productivity") or p["metrics"].get("productivity_ex_ga_ma")
+            for p in nc_data
+            if (p["metrics"].get("productivity") or p["metrics"].get("productivity_ex_ga_ma"))
+        ]
+        purities = [
+            p["metrics"].get("purity") or p["metrics"].get("purity_ex_meoh_free")
+            for p in nc_data
+            if (p["metrics"].get("purity") or p["metrics"].get("purity_ex_meoh_free"))
+        ]
+        recoveries = [
+            p["metrics"].get("recovery_ga") or p["metrics"].get("recovery_ex_GA")
+            for p in nc_data
+            if (p["metrics"].get("recovery_ga") or p["metrics"].get("recovery_ex_GA"))
+        ]
 
         if not prods:
             nc_scores[nc_tuple] = {"score": -float('inf'), "reason": "No valid productivity data"}
@@ -264,12 +276,19 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    # Load Phase 2B screening data
-    phase2_summary = Path(args.phase2_dir) / "phase2_summary.json"
-    if not phase2_summary.exists():
-        print(f"❌ Phase 2B results not found: {phase2_summary}")
+    # Load canonical Phase 2 screening/reference data
+    phase2_dir = Path(args.phase2_dir)
+    candidates = [
+        phase2_dir / "phase2_reference_canonical.json",
+        phase2_dir / "phase2_summary.canonical.json",
+        phase2_dir / "phase2_summary.json",
+    ]
+    phase2_summary = next((p for p in candidates if p.exists()), None)
+    if phase2_summary is None:
+        print(f"❌ No usable Phase 2 results found in: {phase2_dir}")
         return 1
 
+    print(f"Using Phase 2 data source: {phase2_summary}")
     with open(phase2_summary) as f:
         phase2 = json.load(f)
 

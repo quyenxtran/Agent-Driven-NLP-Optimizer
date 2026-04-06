@@ -115,7 +115,8 @@ def run_strategy2(screening_data: List[Dict], artifact_dir: str) -> Dict:
     for point in screening_data:
         if point.get("feasible"):
             nc = point["nc"]
-            prod = point["metrics"].get("productivity")
+            metrics = point.get("metrics", {})
+            prod = metrics.get("productivity") or metrics.get("productivity_ex_ga_ma")
             if prod is not None:
                 X_train.append(nc)
                 y_train.append(prod)
@@ -251,12 +252,19 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    # Load Phase 2B screening data
-    phase2_summary = Path(args.phase2_dir) / "phase2_summary.json"
-    if not phase2_summary.exists():
-        print(f"❌ Phase 2B results not found: {phase2_summary}")
+    # Load canonical Phase 2 screening/reference data
+    phase2_dir = Path(args.phase2_dir)
+    candidates = [
+        phase2_dir / "phase2_reference_canonical.json",
+        phase2_dir / "phase2_summary.canonical.json",
+        phase2_dir / "phase2_summary.json",
+    ]
+    phase2_summary = next((p for p in candidates if p.exists()), None)
+    if phase2_summary is None:
+        print(f"❌ No usable Phase 2 results found in: {phase2_dir}")
         return 1
 
+    print(f"Using Phase 2 data source: {phase2_summary}")
     with open(phase2_summary) as f:
         phase2 = json.load(f)
 
