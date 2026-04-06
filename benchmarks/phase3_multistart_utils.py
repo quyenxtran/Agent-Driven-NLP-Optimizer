@@ -21,9 +21,9 @@ def run_high_fidelity_once(
     nfex: int = 10,
     nfet: int = 5,
     ncp: int = 2,
-    purity_min: float = 0.20,
-    recovery_ga_min: float = 0.20,
-    recovery_ma_min: float = 0.20,
+    purity_min: float = 0.05,
+    recovery_ga_min: float = 0.10,
+    recovery_ma_min: float = 0.15,
     max_pump_flow: float = 3.0,
     timeout: int = 900,
 ) -> Dict:

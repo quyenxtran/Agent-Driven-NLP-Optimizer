@@ -173,7 +173,7 @@ def run_strategy2(screening_data: List[Dict], artifact_dir: str) -> Dict:
         print(f"  {i}. NC {p['nc']}: pred={p['predicted']:.2f}, std={p['uncertainty']:.2f}, UCB={p['ucb']:.2f}")
 
     # Optimize each with high fidelity
-    print(f"\nOptimizing top 5 with high fidelity (nfex=10, nfet=5)...")
+    print(f"\nOptimizing top 5 with high fidelity (nfex=10, nfet=5; relaxed promotion thresholds)...")
     results = []
     for i, pred in enumerate(top_5_ncs):
         nc_list = pred["nc"]

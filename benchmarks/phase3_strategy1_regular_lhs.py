@@ -58,7 +58,7 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
         print(f"    {i}. NC {list(nc)}: J≈{prod:.2f}")
 
     # Optimize each with high fidelity
-    print(f"\nOptimizing top 5 with high fidelity (nfex=10, nfet=5)...")
+    print(f"\nOptimizing top 5 with high fidelity (nfex=10, nfet=5; relaxed promotion thresholds)...")
     results = []
     for i, (nc, screen_prod) in enumerate(top_5_ncs):
         nc_list = list(nc)
