@@ -74,7 +74,8 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
             improvement = ((opt_prod - screen_prod) / screen_prod * 100) if screen_prod else 0
             print(f"✓ J={opt_prod:.2f} (screen: {screen_prod:.2f}, +{improvement:.1f}%)")
         else:
-            print(f"✗ {result['status']}")
+            detail = result.get("termination_condition") or result.get("solver_message") or result.get("error") or result['status']
+            print(f"✗ {result['status']} ({str(detail)[:120]})")
 
     # Find best
     valid_results = [r for r in results if r["status"] == "ok"]
@@ -98,7 +99,8 @@ def run_strategy1(screening_data: List[Dict], artifact_dir: str) -> Dict:
             if ms_result["status"] == "ok":
                 print(f"  multi-start {start_idx}: ✓ J={ms_result.get('productivity', 0):.4f}")
             else:
-                print(f"  multi-start {start_idx}: ✗ {ms_result['status']}")
+                detail = ms_result.get("termination_condition") or ms_result.get("solver_message") or ms_result.get("error") or ms_result['status']
+                print(f"  multi-start {start_idx}: ✗ {ms_result['status']} ({str(detail)[:120]})")
 
         multistart_summary = summarize_multistart(multistart_results)
 

@@ -13,6 +13,42 @@ from typing import Dict, List
 REPO_ROOT = Path(__file__).parent.parent
 
 
+def _extract_artifact_path(stdout: str, stderr: str) -> str | None:
+    for stream in (stdout, stderr):
+        for line in stream.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if '"artifact"' in line:
+                try:
+                    return json.loads(line).get("artifact")
+                except Exception:
+                    continue
+    return None
+
+
+def _artifact_to_result(artifact: Dict, nc: List[int], run_name: str, start_index: int, artifact_path: str, returncode: int) -> Dict:
+    solver = artifact.get("solver", {}) if isinstance(artifact, dict) else {}
+    metrics = artifact.get("metrics", {}) if isinstance(artifact, dict) else {}
+    status = artifact.get("status", "error")
+    result = {
+        "status": status,
+        "nc": nc,
+        "run_name": run_name,
+        "start_index": start_index,
+        "productivity": artifact.get("J_validated"),
+        "purity": metrics.get("purity_ex_meoh_free"),
+        "recovery_ga": metrics.get("recovery_ex_GA"),
+        "recovery_ma": metrics.get("recovery_ex_MA"),
+        "artifact": artifact_path,
+        "returncode": returncode,
+        "solver_status": solver.get("status"),
+        "termination_condition": solver.get("termination_condition"),
+        "solver_message": solver.get("message") or artifact.get("error"),
+    }
+    return result
+
+
 def run_high_fidelity_once(
     nc: List[int],
     run_name: str,
@@ -25,7 +61,7 @@ def run_high_fidelity_once(
     recovery_ga_min: float = 0.10,
     recovery_ma_min: float = 0.15,
     max_pump_flow: float = 3.0,
-    timeout: int = 900,
+    timeout: int = 3600,
 ) -> Dict:
     nc_str = f"[{nc[0]},{nc[1]},{nc[2]},{nc[3]}]"
 
@@ -59,10 +95,6 @@ def run_high_fidelity_once(
         str(recovery_ma_min),
         "--max-pump-flow",
         str(max_pump_flow),
-        "--random-starts",
-        "1",
-        "--random-start-index",
-        str(start_index),
     ]
 
     try:
@@ -73,37 +105,31 @@ def run_high_fidelity_once(
             text=True,
             timeout=timeout,
         )
-        if result.returncode == 0:
-            for line in result.stdout.split("\n"):
-                if '"artifact"' in line:
-                    artifact_path = json.loads(line).get("artifact")
-                    if artifact_path and Path(artifact_path).exists():
-                        with open(artifact_path) as f:
-                            artifact = json.load(f)
-                        return {
-                            "status": "ok",
-                            "nc": nc,
-                            "run_name": run_name,
-                            "start_index": start_index,
-                            "productivity": artifact.get("J_validated"),
-                            "purity": artifact.get("metrics", {}).get("purity_ex_meoh_free"),
-                            "recovery_ga": artifact.get("metrics", {}).get("recovery_ex_GA"),
-                            "recovery_ma": artifact.get("metrics", {}).get("recovery_ex_MA"),
-                            "artifact": artifact_path,
-                        }
+        artifact_path = _extract_artifact_path(result.stdout, result.stderr)
+        if artifact_path and Path(artifact_path).exists():
+            with open(artifact_path) as f:
+                artifact = json.load(f)
+            return _artifact_to_result(artifact, nc, run_name, start_index, artifact_path, result.returncode)
         return {
             "status": "error",
             "nc": nc,
             "run_name": run_name,
             "start_index": start_index,
-            "error": result.stderr[:300],
+            "returncode": result.returncode,
+            "stdout_tail": result.stdout[-1000:],
+            "error": result.stderr[-1000:],
         }
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
+        artifact_path = _extract_artifact_path(e.stdout or "", e.stderr or "")
         return {
             "status": "timeout",
             "nc": nc,
             "run_name": run_name,
             "start_index": start_index,
+            "timeout": timeout,
+            "artifact": artifact_path,
+            "stdout_tail": (e.stdout or "")[-1000:],
+            "error": (e.stderr or "")[-1000:],
         }
     except Exception as e:
         return {
