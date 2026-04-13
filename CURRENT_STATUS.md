@@ -31,6 +31,12 @@ The current TODO has now been rewritten to reflect the **actual state of AutoRes
 - which docs are current vs archived
 - which benchmark results are complete and publication-ready
 - whether the framing is consistently stated as **agent-orchestrated optimization** rather than “LLM replaces optimizer”
+- whether benchmark summary files, current plan files, and evaluation scripts are fully in sync
+
+## Current benchmark evidence note
+
+See:
+- `BENCHMARK_EVIDENCE_STATUS.md`
 
 ## Recommended next move
 
@@ -42,3 +48,4 @@ Create one single source of truth for:
 
 See:
 - `TODO-2026-04-13-agent-optimizer.md`
+- `BENCHMARK_EVIDENCE_STATUS.md`
