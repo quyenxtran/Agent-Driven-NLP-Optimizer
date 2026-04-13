@@ -20,6 +20,7 @@ In other words:
 - **Primary current plan:** `PLAN.md`
 - **Current repo-local summary:** `CURRENT_STATUS.md`
 - **Current project TODO:** `TODO-2026-04-13-agent-optimizer.md`
+- **Documentation routing guide:** `docs/DOCUMENTATION_INDEX.md`
 
 ### Archived / historical status note
 - `LIVE_STATUS.md` is archival and should not be treated as the current source of truth.
