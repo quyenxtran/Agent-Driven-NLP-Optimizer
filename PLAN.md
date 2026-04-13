@@ -1,6 +1,17 @@
 # PLAN.md
 
-_Last reconciled: 2026-04-05 23:30 EDT_
+_Last reconciled: 2026-04-13 16:10 EDT_
+
+This file is the **single authoritative live plan** for AutoResearch-SMB.
+
+If other planning or status documents conflict with this one:
+- follow **this file first**
+- treat older plan/status notes as archive or supporting context unless they are explicitly reconciled here
+
+Related navigation:
+- `CURRENT_STATUS.md` — short current summary
+- `docs/DOCUMENTATION_INDEX.md` — document priority guide
+- `docs/ARCHITECTURE_AND_STATUS.md` — architecture and framing map
 
 ## Executive summary
 
@@ -161,6 +172,8 @@ This phase is conceptually stable across documents, even though exact thresholds
 
 ## What is outdated vs still useful
 
+This section is normative: unless a file is listed as primary here or reconciled later into this plan, it should not override `PLAN.md`.
+
 ## Outdated or partially outdated docs
 
 ### `LIVE_STATUS.md`
@@ -320,7 +333,10 @@ The many per-seed `reference-eval.*.json` files for job `6289854` are the cleare
 
 ## Files that should now be treated as primary
 
-- `PLAN.md` ← this file
+- `PLAN.md` ← single authoritative live plan
+- `CURRENT_STATUS.md`
+- `docs/DOCUMENTATION_INDEX.md`
+- `docs/ARCHITECTURE_AND_STATUS.md`
 - `slurm/pace_smb_phase2_reference_eval.slurm`
 - `artifacts/phase2_lhs_seeding/phase2_reference_summary.json`
 - `logs/smb-phase2-ref-6289854.out`

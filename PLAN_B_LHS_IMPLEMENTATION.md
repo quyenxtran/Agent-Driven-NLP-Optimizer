@@ -1,3 +1,18 @@
+# PLAN_B_LHS_IMPLEMENTATION.md
+
+Archived alternative-plan note.
+
+This file should be treated as **historical contingency planning**, not the live project plan.
+
+## Current source of truth
+- Read **`PLAN.md`** for the single authoritative live plan.
+- See `docs/DOCUMENTATION_INDEX.md` for document priority.
+
+## Why this file is archived
+It describes an alternative implementation path that is no longer the designated primary plan.
+
+---
+
 # Plan B: LHS + Physics Filtering Implementation
 
 ## 🎯 Objective

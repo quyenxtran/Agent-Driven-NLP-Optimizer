@@ -1,3 +1,18 @@
+# OPTIMIZATION_STATUS.md
+
+Archived status note.
+
+This file captures a specific optimization-improvement snapshot and should be treated as **historical implementation context**, not the live project plan.
+
+## Current source of truth
+- Read **`PLAN.md`** for the single authoritative live plan.
+- See `CURRENT_STATUS.md` for the short current summary.
+
+## Why this file is archived
+It documents one optimization/status snapshot rather than the full current project plan.
+
+---
+
 # Optimization Implementation Status
 
 ## Completed (Phase 1: High-ROI, Low-Effort)

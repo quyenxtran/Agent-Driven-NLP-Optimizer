@@ -1,3 +1,18 @@
+# PHASE3_IMPLEMENTATION_STATUS.md
+
+Archived status snapshot.
+
+This file is still useful reference material, but it should be treated as **secondary historical status**, not the live source of planning truth.
+
+## Current source of truth
+- Read **`PLAN.md`** for the single authoritative live plan.
+- See `BENCHMARK_EVIDENCE_STATUS.md` for benchmark reconciliation notes.
+
+## Why this file is archived
+It reflects one Phase 3 readiness snapshot, while the repo now uses `PLAN.md` as the primary reconciled planning document.
+
+---
+
 # Phase 3 Implementation Status
 
 ## Summary
