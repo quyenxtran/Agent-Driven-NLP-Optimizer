@@ -5,9 +5,9 @@
 [![IPOPT](https://img.shields.io/badge/IPOPT-3.14+-green.svg)](https://coin-or.github.io/Ipopt/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A framework for agent-driven nonlinear programming (NLP) optimization. A team of LLM agents (proposer, reviewer, executive moderator) iteratively guide an IPOPT-based solver through a multi-fidelity search, replacing the need for a human expert to manually tune the optimization strategy.
+A framework for agent-orchestrated nonlinear programming (NLP) optimization. A team of LLM agents (proposer, reviewer, executive moderator) works as an orchestration layer around SMB simulation and IPOPT-based optimization, helping decide which experiment or optimization attempt to run next in a multi-fidelity search.
 
-The core hypothesis: **an LLM agent that reasons about which experiment to run next can reach near-optimal solutions in fewer simulations than brute-force MINLP**, especially when data is scarce and each solver call is expensive.
+The core hypothesis: **an agent that reasons about which expensive evaluation to run next can reach strong solutions in fewer simulations than brute-force or fixed-schedule baselines**, especially when data is scarce and each solver call is expensive.
 
 **Reference use case**: SMB chromatography — maximizing organic acid (GA/MA) productivity subject to purity and recovery constraints on an 8-column Simulated Moving Bed unit with 35 admissible column layouts and a 5-dimensional continuous flow space.
 
@@ -18,7 +18,7 @@ Traditional approaches to NLP with discrete structure (like column layout select
 - **Exhaustive grid search**: Evaluate all NC layouts x all seeds x all flow combinations. Thorough but expensive — hundreds of solver calls with no intelligence about ordering.
 - **Direct MINLP**: Hand the full mixed-integer problem to a global solver. Often intractable for complex DAE-constrained models.
 
-The agent-driven approach treats each simulation as an **expensive experiment** and uses LLM reasoning to decide what to simulate next:
+The agent-driven approach treats each simulation as an **expensive experiment** and uses LLM reasoning to decide how optimization effort should be allocated next:
 
 1. **Data-scarce decision-making** — With only a few completed simulations, the agent forms physics-grounded hypotheses about which regions of the design space are most promising, rather than sampling blindly.
 2. **Acquisition strategy** — Every proposal is classified as EXPLORE (cover untested regions), EXPLOIT (refine near the best known point), or VERIFY (confirm optimality via perturbation). The agent tracks its own exploration/exploitation balance.
@@ -65,6 +65,12 @@ results = solve_model(model, solver_name="ipopt_sens", linear_solver="ma57")
 ```
 
 ## Agent Architecture
+
+Important framing:
+- **The numerical optimizer is still the optimizer.** IPOPT and related solver tooling do the mathematical search.
+- **The agent is an orchestration/controller layer.** It decides what to try next, how to use prior evidence, when to explore or exploit, and how to spend limited evaluation budget.
+- **The system does not claim global optimality from LLM reasoning.**
+
 
 Three agents share a SQLite experiment database (`smb_agent_context.sqlite`) with two tables: `simulation_results` (full run history) and `convergence_tracker` (best-so-far after each simulation):
 
@@ -142,6 +148,15 @@ F1 = Fdes  + Fex       (desorbent zone)
 ```
 
 `Fraf` is derived and never optimized independently. Violating this by >1% causes solver errors or unphysical results.
+
+## Project status and planning
+
+For the current reconciled project state, read:
+- `PLAN.md`
+- `CURRENT_STATUS.md`
+- `docs/ARCHITECTURE_AND_STATUS.md`
+
+`LIVE_STATUS.md` is archival and should not be treated as the current source of truth.
 
 ## License
 
