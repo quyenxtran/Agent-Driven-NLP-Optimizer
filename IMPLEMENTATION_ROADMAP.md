@@ -1,3 +1,18 @@
+# IMPLEMENTATION_ROADMAP.md
+
+Archived roadmap note.
+
+This file remains useful as design rationale, but it should be treated as **secondary historical planning material**, not the current canonical project plan.
+
+## Current source of truth
+- Read **`PLAN.md`** for the most up-to-date project plan.
+- See `docs/ARCHITECTURE_AND_STATUS.md` for code/framing alignment.
+
+## Why this file is archived
+It describes an earlier roadmap for agent-enhanced BO integration under assumptions that may not match the current reconciled execution plan.
+
+---
+
 # Implementation Roadmap: Agent-Enhanced BO Loop for Phase 3
 
 **Date**: April 5, 2026  

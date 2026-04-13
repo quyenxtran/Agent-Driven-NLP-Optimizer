@@ -10,6 +10,7 @@ Read these first.
 
 ### `PLAN.md`
 Current reconciled execution plan and workflow status.
+This should be treated as the **single primary live plan** unless explicitly superseded and reconciled.
 
 ### `CURRENT_STATUS.md`
 Short repo-local summary of where the project stands.
@@ -80,6 +81,7 @@ Check whether it is listed under Tier 3 above.
 ## Guiding rule
 
 When documents conflict:
+- prefer **`PLAN.md` first** for planning truth
 - prefer **Tier 1** over Tier 2
 - prefer **Tier 2** over Tier 3
 - prefer current code and current artifacts over stale prose

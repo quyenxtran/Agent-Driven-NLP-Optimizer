@@ -1,3 +1,18 @@
+# OPTIMIZATION_PLAN.md
+
+Archived planning note.
+
+This file should be treated as historical planning context unless it is explicitly reconciled back into `PLAN.md`.
+
+## Current source of truth
+- Read **`PLAN.md`** for the most up-to-date project plan.
+- See `CURRENT_STATUS.md` for the short current summary.
+
+## Why this file is archived
+There are multiple plan-like documents in the repo; `PLAN.md` is the designated primary plan.
+
+---
+
 # Agent Iteration Speed Optimization Plan
 
 ## Problem Statement

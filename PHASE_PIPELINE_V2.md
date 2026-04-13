@@ -1,3 +1,18 @@
+# PHASE_PIPELINE_V2.md
+
+Archived pipeline design note.
+
+This file describes an earlier redesigned pipeline concept and should be treated as **historical planning context**, not the current canonical plan.
+
+## Current source of truth
+- Read **`PLAN.md`** for the most up-to-date project plan.
+- Use `CURRENT_STATUS.md` and `docs/DOCUMENTATION_INDEX.md` to navigate active status docs.
+
+## Why this file is archived
+It describes an older multi-strategy pipeline design with assumptions that are no longer the primary reconciled plan.
+
+---
+
 # Redesigned Pipeline: Phase 2 → Phase 3 (4 Strategies) → Phase 4
 
 ## Overview
