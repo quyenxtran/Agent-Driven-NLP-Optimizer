@@ -2,24 +2,22 @@
 """
 Phase 3 Comparative Evaluation Orchestrator
 
-Runs all three NC selection strategies, executes high-fidelity validation on
-their top-5 selections, computes statistics, and generates publication figures.
-
-Workflow:
-  1. Wait for Phase 2 data (phase2_summary.json)
+Runs all three NC selection strategies using the revised publication plan:
+  1. Wait for Phase 2 data
   2. Run Strategy A: Heuristic baseline
   3. Run Strategy B: Bayesian Optimization + GP
   4. Run Strategy C: Agent + LHS + Domain
-  5. For each strategy's top 5 NCs: run 3 high-fidelity optimizations (45 total)
-  6. Compute statistics: ANOVA, Tukey HSD, effect sizes, confidence intervals
-  7. Generate summary table and figures
+  5. For each strategy's top 5 NCs: run 1 high-fidelity promotion optimization
+  6. Promote the single best NC per strategy
+  7. Run 3 multi-start high-fidelity validations only on each promoted winner
+  8. Compute summary statistics aligned with the revised plan
 """
 
 import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -28,16 +26,8 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 
-def run_strategy_selection(strategy_script: str) -> Dict:
-    """
-    Run a single NC selection strategy.
-
-    Args:
-        strategy_script: Path to strategy script (relative to benchmarks/)
-
-    Returns:
-        Selection results JSON with selected_ncs and reasoning
-    """
+def run_strategy_selection(strategy_script: str) -> bool:
+    """Run a single NC selection strategy script."""
     script_path = REPO_ROOT / "benchmarks" / strategy_script
 
     print(f"\n📍 Running {strategy_script}...")
@@ -48,32 +38,29 @@ def run_strategy_selection(strategy_script: str) -> Dict:
             cwd=str(REPO_ROOT),
             capture_output=True,
             text=True,
-            timeout=600,  # 10 minutes per strategy
+            timeout=600,
         )
 
         if result.returncode == 0:
             print(f"✓ {strategy_script} completed successfully")
-            # Try to parse any JSON output from the script
             for line in result.stdout.split("\n"):
                 if "Results saved to" in line:
-                    # Extract file path from output
                     print(f"  Output: {line.strip()}")
-        else:
-            print(f"✗ {strategy_script} failed with return code {result.returncode}")
-            print(f"  stderr: {result.stderr[:500]}")
-            return None
+            return True
+
+        print(f"✗ {strategy_script} failed with return code {result.returncode}")
+        print(f"  stderr: {result.stderr[:500]}")
+        return False
 
     except subprocess.TimeoutExpired:
         print(f"✗ {strategy_script} timed out")
-        return None
-    except Exception as e:
-        print(f"✗ {strategy_script} error: {e}")
-        return None
-
-    return result.returncode == 0
+        return False
+    except Exception as exc:
+        print(f"✗ {strategy_script} error: {exc}")
+        return False
 
 
-def load_strategy_results(strategy_name: str) -> Dict:
+def load_strategy_results(strategy_name: str) -> Optional[Dict]:
     """Load saved strategy selection results."""
     result_file = (
         REPO_ROOT
@@ -86,24 +73,20 @@ def load_strategy_results(strategy_name: str) -> Dict:
         print(f"⚠ Strategy results not found: {result_file}")
         return None
 
-    with open(result_file) as f:
-        return json.load(f)
+    with open(result_file) as handle:
+        return json.load(handle)
 
 
-def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -> Dict:
-    """
-    Run single high-fidelity optimization on an NC.
-
-    Args:
-        nc: NC configuration [n1, n2, n3, n4]
-        strategy: Strategy name (a, b, or c)
-        run_num: Run number (1, 2, or 3)
-
-    Returns:
-        {status, nc, J_validated, purity, recovery, ...}
-    """
+def run_high_fidelity_optimization(
+    nc: List[int],
+    strategy: str,
+    run_label: str,
+    *,
+    artifact_dir: str,
+) -> Dict:
+    """Run a single high-fidelity optimization for one NC."""
     nc_str = f"[{nc[0]},{nc[1]},{nc[2]},{nc[3]}]"
-    run_name = f"phase3_s{strategy}_nc_{''.join(map(str, nc))}_run{run_num}"
+    run_name = f"phase3_s{strategy}_nc_{''.join(map(str, nc))}_{run_label}"
 
     cmd = [
         sys.executable,
@@ -114,7 +97,7 @@ def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -
         "--run-name",
         run_name,
         "--artifact-dir",
-        "artifacts/phase3_validation",
+        artifact_dir,
         "--nc",
         nc_str,
         "--solver-name",
@@ -122,13 +105,13 @@ def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -
         "--linear-solver",
         "ma97",
         "--nfex",
-        "10",  # High fidelity
+        "10",
         "--nfet",
         "5",
         "--ncp",
         "2",
         "--purity-min",
-        "0.60",  # Strict validation
+        "0.60",
         "--recovery-ga-min",
         "0.75",
         "--recovery-ma-min",
@@ -143,24 +126,23 @@ def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -
             cwd=str(REPO_ROOT),
             capture_output=True,
             text=True,
-            timeout=900,  # 15 minutes per optimization
+            timeout=900,
         )
 
         if result.returncode == 0:
-            # Parse artifact JSON from output
             for line in result.stdout.split("\n"):
                 if '"artifact"' in line:
                     try:
                         artifact_data = json.loads(line)
                         artifact_path = artifact_data.get("artifact")
                         if artifact_path and Path(artifact_path).exists():
-                            with open(artifact_path) as f:
-                                artifact = json.load(f)
+                            with open(artifact_path) as handle:
+                                artifact = json.load(handle)
                             return {
                                 "status": "ok",
                                 "nc": nc,
                                 "strategy": strategy,
-                                "run": run_num,
+                                "run_label": run_label,
                                 "J_validated": artifact.get("J_validated"),
                                 "purity": artifact.get("metrics", {}).get(
                                     "purity_ex_meoh_free"
@@ -179,7 +161,7 @@ def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -
             "status": "error",
             "nc": nc,
             "strategy": strategy,
-            "run": run_num,
+            "run_label": run_label,
             "error": result.stderr[:200],
         }
 
@@ -188,168 +170,191 @@ def run_high_fidelity_optimization(nc: List[int], strategy: str, run_num: int) -
             "status": "timeout",
             "nc": nc,
             "strategy": strategy,
-            "run": run_num,
+            "run_label": run_label,
         }
-    except Exception as e:
+    except Exception as exc:
         return {
             "status": "exception",
             "nc": nc,
             "strategy": strategy,
-            "run": run_num,
-            "error": str(e),
+            "run_label": run_label,
+            "error": str(exc),
         }
 
 
-def execute_phase3_validation(strategy_results: Dict, strategy_name: str) -> List[Dict]:
-    """
-    Execute high-fidelity validation for a strategy's top 5 NCs.
-
-    3 independent runs per NC → 5 NCs × 3 runs = 15 optimizations per strategy
-    Total across 3 strategies: 45 optimizations
-    """
+def run_promotion_stage(strategy_results: Dict, strategy_name: str) -> List[Dict]:
+    """Run one high-fidelity promotion optimization for each selected NC."""
     selected_ncs = strategy_results.get("selected_ncs", [])
 
-    print(f"\n{'='*70}")
-    print(f"PHASE 3 VALIDATION: Strategy {strategy_name.upper()}")
-    print(f"{'='*70}")
-    print(f"Validating {len(selected_ncs)} selected NCs with 3 runs each...")
+    print(f"\n{'=' * 70}")
+    print(f"PHASE 3 PROMOTION STAGE: Strategy {strategy_name.upper()}")
+    print(f"{'=' * 70}")
+    print(f"Running one promotion optimization for {len(selected_ncs)} selected NCs...")
 
     results = []
     for nc_idx, nc in enumerate(selected_ncs, 1):
-        for run_num in range(1, 4):
-            print(f"  [{nc_idx}/5, run {run_num}/3] NC {nc}...", end=" ", flush=True)
+        print(f"  [{nc_idx}/{len(selected_ncs)}] NC {nc}...", end=" ", flush=True)
+        result = run_high_fidelity_optimization(
+            nc,
+            strategy_name,
+            run_label="promote",
+            artifact_dir="artifacts/phase3_validation/promotions",
+        )
+        results.append(result)
 
-            result = run_high_fidelity_optimization(nc, strategy_name, run_num)
-            results.append(result)
-
-            if result["status"] == "ok":
-                j_val = result.get("J_validated", 0)
-                print(f"✓ J={j_val:.4f}")
-            else:
-                print(f"✗ {result['status']}")
+        if result["status"] == "ok":
+            j_val = result.get("J_validated")
+            print(f"✓ J={j_val:.4f}" if j_val is not None else "✓ ok")
+        else:
+            print(f"✗ {result['status']}")
 
     return results
 
 
-def compute_statistics(all_results: List[Dict]) -> Dict:
-    """
-    Compute statistical comparison across strategies.
+def select_best_promoted_nc(promotion_results: List[Dict]) -> Optional[Dict]:
+    """Return the best successful promotion-stage result."""
+    successful = [r for r in promotion_results if r.get("status") == "ok" and r.get("J_validated") is not None]
+    if not successful:
+        return None
+    return max(successful, key=lambda result: result["J_validated"])
 
-    Primary metric: Best J achieved per strategy
-    Tests: One-way ANOVA, Tukey HSD, effect sizes, confidence intervals
-    """
-    from scipy import stats
 
-    print(f"\n{'='*70}")
-    print("STATISTICAL ANALYSIS")
-    print(f"{'='*70}")
+def run_finalist_robustness(finalist_result: Dict, strategy_name: str) -> List[Dict]:
+    """Run 3 multi-start high-fidelity validations on the promoted winner."""
+    nc = finalist_result["nc"]
 
-    # Group results by strategy
-    results_by_strategy = {}
-    for result in all_results:
-        if result.get("status") == "ok":
-            strategy = result.get("strategy")
-            if strategy not in results_by_strategy:
-                results_by_strategy[strategy] = []
-            results_by_strategy[strategy].append(result.get("J_validated", 0))
+    print(f"\n{'=' * 70}")
+    print(f"FINALIST ROBUSTNESS STAGE: Strategy {strategy_name.upper()}")
+    print(f"{'=' * 70}")
+    print(f"Running 3 multi-start validations for promoted winner NC {nc}...")
 
-    # Summary statistics
-    print("\n📊 Summary by Strategy:")
-    summary = {}
-    for strategy in ["a", "b", "c"]:
-        j_values = results_by_strategy.get(strategy, [])
-        if j_values:
-            best_j = max(j_values)
-            mean_j = np.mean(j_values)
-            std_j = np.std(j_values)
-            ci_lower = np.percentile(j_values, 2.5)
-            ci_upper = np.percentile(j_values, 97.5)
+    results = []
+    for run_num in range(1, 4):
+        run_label = f"finalist_run{run_num}"
+        print(f"  [run {run_num}/3] NC {nc}...", end=" ", flush=True)
+        result = run_high_fidelity_optimization(
+            nc,
+            strategy_name,
+            run_label=run_label,
+            artifact_dir="artifacts/phase3_validation/finalists",
+        )
+        results.append(result)
 
-            print(
-                f"\nStrategy {strategy.upper()}:"
-                f"\n  Best J: {best_j:.4f}"
-                f"\n  Mean J: {mean_j:.4f} ± {std_j:.4f}"
-                f"\n  95% CI: [{ci_lower:.4f}, {ci_upper:.4f}]"
-                f"\n  N: {len(j_values)} evaluations"
-            )
-
-            summary[strategy] = {
-                "best_j": float(best_j),
-                "mean_j": float(mean_j),
-                "std_j": float(std_j),
-                "ci_lower": float(ci_lower),
-                "ci_upper": float(ci_upper),
-                "n_evals": len(j_values),
-            }
+        if result["status"] == "ok":
+            j_val = result.get("J_validated")
+            print(f"✓ J={j_val:.4f}" if j_val is not None else "✓ ok")
         else:
-            print(f"\nStrategy {strategy.upper()}: No successful evaluations")
+            print(f"✗ {result['status']}")
 
-    # ANOVA test (if we have data from all strategies)
-    if len(results_by_strategy) >= 3:
-        all_groups = [
-            results_by_strategy.get(s, []) for s in ["a", "b", "c"]
-        ]
+    return results
 
-        if all(len(g) > 0 for g in all_groups):
-            f_stat, p_value = stats.f_oneway(*all_groups)
 
-            print(f"\n📈 One-Way ANOVA:")
-            print(f"  F-statistic: {f_stat:.4f}")
-            print(f"  p-value: {p_value:.6f}")
-            print(f"  Significant at α=0.05: {'Yes' if p_value < 0.05 else 'No'}")
+def summarize_result_set(results: List[Dict]) -> Dict:
+    """Summarize a set of optimization results."""
+    successful = [r for r in results if r.get("status") == "ok" and r.get("J_validated") is not None]
+    j_values = [r["J_validated"] for r in successful]
 
-            summary["anova"] = {
-                "f_statistic": float(f_stat),
-                "p_value": float(p_value),
-                "significant": p_value < 0.05,
-            }
+    return {
+        "n_total": len(results),
+        "n_successful": len(successful),
+        "best_j": float(max(j_values)) if j_values else None,
+        "mean_j": float(np.mean(j_values)) if j_values else None,
+        "median_j": float(np.median(j_values)) if j_values else None,
+        "std_j": float(np.std(j_values)) if j_values else None,
+    }
+
+
+def build_strategy_summary(promotion_results: List[Dict], finalist_results: List[Dict]) -> Dict:
+    """Build one strategy summary aligned with the revised Phase 3 plan."""
+    best_promoted = select_best_promoted_nc(promotion_results)
+
+    return {
+        "best_promoted_nc": best_promoted["nc"] if best_promoted else None,
+        "best_promoted_j": best_promoted["J_validated"] if best_promoted else None,
+        "promotion_stage": summarize_result_set(promotion_results),
+        "finalist_robustness": summarize_result_set(finalist_results),
+    }
+
+
+def compute_statistics(
+    promotion_results_by_strategy: Dict[str, List[Dict]],
+    finalist_results_by_strategy: Dict[str, List[Dict]],
+) -> Dict:
+    """Compute revised-plan summary statistics by strategy."""
+    summary = {}
+
+    for strategy in ["a", "b", "c"]:
+        promoted = promotion_results_by_strategy.get(strategy, [])
+        finalists = finalist_results_by_strategy.get(strategy, [])
+        promoted_ok = [r["J_validated"] for r in promoted if r.get("status") == "ok" and r.get("J_validated") is not None]
+        finalists_ok = [r["J_validated"] for r in finalists if r.get("status") == "ok" and r.get("J_validated") is not None]
+
+        summary[strategy] = {
+            "best_promoted_j": float(max(promoted_ok)) if promoted_ok else None,
+            "promotion_mean_j": float(np.mean(promoted_ok)) if promoted_ok else None,
+            "promotion_median_j": float(np.median(promoted_ok)) if promoted_ok else None,
+            "promotion_n": len(promoted_ok),
+            "finalist_best_j": float(max(finalists_ok)) if finalists_ok else None,
+            "finalist_mean_j": float(np.mean(finalists_ok)) if finalists_ok else None,
+            "finalist_std_j": float(np.std(finalists_ok)) if finalists_ok else None,
+            "finalist_n": len(finalists_ok),
+        }
 
     return summary
 
 
 def generate_summary_report(
-    strategy_results: Dict,
-    validation_results: Dict,
+    strategy_results: Dict[str, Dict],
+    promotion_results: Dict[str, List[Dict]],
+    finalist_results: Dict[str, List[Dict]],
     statistics: Dict,
 ) -> None:
-    """Generate human-readable summary report."""
-    print(f"\n{'='*70}")
+    """Generate human-readable summary report and save JSON output."""
+    print(f"\n{'=' * 70}")
     print("PHASE 3 COMPARATIVE STUDY: SUMMARY REPORT")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
-    # Selection summaries
     print("\n📋 NC SELECTIONS BY STRATEGY:")
     for strategy in ["a", "b", "c"]:
         results = strategy_results.get(strategy, {})
         selected = results.get("selected_ncs", [])
         print(f"\nStrategy {strategy.upper()}: {selected}")
 
-    # Validation results
-    print("\n✅ VALIDATION RESULTS:")
-    print(f"Statistics: {json.dumps(statistics, indent=2)}")
+    print("\n✅ REVISED-PLAN SUMMARY:")
+    print(json.dumps(statistics, indent=2))
 
-    # Save comprehensive results
+    strategy_summaries = {
+        strategy: build_strategy_summary(
+            promotion_results.get(strategy, []),
+            finalist_results.get(strategy, []),
+        )
+        for strategy in ["a", "b", "c"]
+    }
+
     output = {
         "phase": "3_comparative",
-        "date": str(Path.cwd()),
+        "plan": "revised_publication_plan",
         "strategies": strategy_results,
+        "promotion_results": promotion_results,
+        "finalist_results": finalist_results,
+        "strategy_summaries": strategy_summaries,
         "statistics": statistics,
     }
 
     output_file = REPO_ROOT / "artifacts" / "phase3_results" / "study_summary.json"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_file, "w") as f:
-        json.dump(output, f, indent=2, default=str)
+    with open(output_file, "w") as handle:
+        json.dump(output, handle, indent=2, default=str)
 
     print(f"\n✓ Summary saved to {output_file}")
 
 
-def main():
+def main() -> int:
     """Main orchestration workflow."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("PHASE 3 COMPARATIVE STUDY ORCHESTRATOR")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     phase2_dir = REPO_ROOT / "artifacts" / "phase2_lhs_seeding"
     has_legacy = (phase2_dir / "phase2_summary.json").exists()
@@ -362,14 +367,12 @@ def main():
 
     print(f"✓ Phase 2 data source found under: {phase2_dir}")
 
-    # Create output directory
     output_dir = REPO_ROOT / "artifacts" / "phase3_results"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Run all three strategy selections
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("STRATEGY SELECTION (Phase 3A)")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     strategies = {
         "a": "phase3_strategy_a_baseline.py",
@@ -377,7 +380,7 @@ def main():
         "c": "phase3_strategy_c_agent_lhs.py",
     }
 
-    strategy_results = {}
+    strategy_results: Dict[str, Dict] = {}
     for strategy_key, strategy_script in strategies.items():
         success = run_strategy_selection(strategy_script)
         if success:
@@ -389,29 +392,44 @@ def main():
         print("\n❌ Not all strategies completed successfully")
         return 1
 
-    # Execute high-fidelity validation
-    print(f"\n{'='*70}")
-    print("HIGH-FIDELITY VALIDATION (Phase 3B)")
-    print(f"{'='*70}")
+    promotion_results: Dict[str, List[Dict]] = {}
+    finalist_results: Dict[str, List[Dict]] = {}
 
-    all_validation_results = []
+    print(f"\n{'=' * 70}")
+    print("PROMOTION STAGE (Phase 3B)")
+    print(f"{'=' * 70}")
+
     for strategy_key in ["a", "b", "c"]:
-        results = execute_phase3_validation(
-            strategy_results[strategy_key], strategy_key
+        promotion_results[strategy_key] = run_promotion_stage(
+            strategy_results[strategy_key],
+            strategy_key,
         )
-        all_validation_results.extend(results)
 
-    # Compute statistics
-    statistics = compute_statistics(all_validation_results)
+    print(f"\n{'=' * 70}")
+    print("FINALIST ROBUSTNESS STAGE (Phase 3C)")
+    print(f"{'=' * 70}")
 
-    # Generate summary
-    generate_summary_report(strategy_results, all_validation_results, statistics)
+    for strategy_key in ["a", "b", "c"]:
+        best_promoted = select_best_promoted_nc(promotion_results[strategy_key])
+        finalist_results[strategy_key] = (
+            run_finalist_robustness(best_promoted, strategy_key)
+            if best_promoted
+            else []
+        )
 
-    print(f"\n{'='*70}")
+    statistics = compute_statistics(promotion_results, finalist_results)
+    generate_summary_report(
+        strategy_results,
+        promotion_results,
+        finalist_results,
+        statistics,
+    )
+
+    print(f"\n{'=' * 70}")
     print("✓ PHASE 3 COMPARATIVE STUDY COMPLETE")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"\nResults directory: {output_dir}")
-    print(f"Next: Analyze results and write manuscript")
+    print("Next: Analyze results and write manuscript")
 
     return 0
 
