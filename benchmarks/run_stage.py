@@ -19,10 +19,14 @@ from itertools import product
 from pathlib import Path
 from typing import Callable, Deque, Dict, Iterable, List, Sequence, Tuple
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from pyomo.environ import value
 
+from benchmarks.phase2_validity import classify_reference_eval_payload
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
 SMB_ROOT = REPO_ROOT / "src"
 if str(SMB_ROOT) not in sys.path:
     sys.path.insert(0, str(SMB_ROOT))
@@ -402,7 +406,10 @@ def maybe_start_ipopt_monitor(
 
 
 def parse_nc(raw: str) -> Tuple[int, int, int, int]:
-    values = tuple(int(part.strip()) for part in raw.split(",") if part.strip())
+    cleaned = raw.strip().strip("[]()")
+    if "," not in cleaned and "-" in cleaned:
+        cleaned = cleaned.replace("-", ",")
+    values = tuple(int(part.strip()) for part in cleaned.split(",") if part.strip())
     if len(values) != 4:
         raise ValueError(f"Expected four comma-separated integers for nc, got {raw!r}")
     if any(val <= 0 for val in values):
@@ -1249,6 +1256,9 @@ def evaluate_candidate(args: argparse.Namespace, nc: Sequence[int], *, return_mo
             "cpu_hours_accounted": wall_seconds * cpus_used / 3600.0,
         },
     }
+    payload.update(classify_reference_eval_payload(payload))
+    if not payload["usable_for_phase2"]:
+        payload["J_validated"] = None
     # Capture solved model state for warm-starting downstream optimization
     if return_model_state:
         try:
@@ -2000,7 +2010,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--solver-name", default="auto")
     parser.add_argument("--solver-candidates", default="ipopt_sens,ipopt,bonmin,couenne,cbc,glpk")
     parser.add_argument("--no-reference-gate", action="store_true", default=False, help="Disable reference gate evaluations (for fast foundation data generation)")
-    parser.add_argument("--linear-solver")
+    parser.add_argument("--linear-solver", default=os.environ.get("SMB_LINEAR_SOLVER", "ma97"))
     parser.add_argument("--max-iter", type=int)
     parser.add_argument("--tol", type=float)
     parser.add_argument("--acceptable-tol", type=float)

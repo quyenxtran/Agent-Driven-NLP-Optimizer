@@ -11,15 +11,15 @@
 # export SMB_FDES_LIBRARY='0.8,1.0,1.2'
 # export SMB_FEX_LIBRARY='0.6,0.8,1.0'
 # export SMB_TSTEP_LIBRARY='8.5,9.5,10.5'
-# sbatch --export=ALL,SMB_STAGE=flow-screen,SMB_RUN_NAME=flow_smoke,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=flow-screen,SMB_RUN_NAME=flow_smoke,SMB_LINEAR_SOLVER=ma97 AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 # export SMB_NC_LIBRARY='1,2,3,2;2,2,2,2;1,3,2,2'
 # export SMB_SEED_LIBRARY='notebook'
-# sbatch --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_baseline,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_baseline,SMB_LINEAR_SOLVER=ma97 AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 # export SMB_NC_LIBRARY='all'
 # export SMB_SEED_LIBRARY='notebook'
 # export SMB_TSTEP='9.4'
 # export SMB_TSTEP_BOUNDS='9.4,9.4'
-# sbatch --time=05:00:00 --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_all_nc_5h,SMB_SOLVER_NAME=ipopt,SMB_LINEAR_SOLVER=mumps AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
+# sbatch --time=05:00:00 --cpus-per-task=4 --export=ALL,SMB_STAGE=optimize-layouts,SMB_RUN_NAME=minlp_all_nc_5h,SMB_SOLVER_NAME=ipopt,SMB_LINEAR_SOLVER=ma97 AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
 #
 # Override account, partition, or time at submit time if needed:
 # sbatch --account=gts-sn73 --qos=inferno --partition=cpu-amd --time=08:00:00 --export=ALL,SMB_STAGE=reference-eval AutoResearch-SMB/slurm/pace_smb_stage_runner.slurm
@@ -29,7 +29,7 @@
 #SBATCH --qos=inferno
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=05:00:00
 #SBATCH --mail-user=qtran47@gatech.edu
@@ -119,13 +119,22 @@ export PATH="${VENV_DIR}/bin:${PATH}"
 # Ensure scratch-installed IPOPT is visible in batch jobs.
 IPOPT_BIN_DIR="${IPOPT_BIN_DIR:-}"
 if [[ -z "${IPOPT_BIN_DIR}" && -n "${DEFAULT_SCRATCH_ROOT}" ]]; then
-  IPOPT_BIN_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt/bin"
+  if [[ -d "${DEFAULT_SCRATCH_ROOT}/opt/ipopt-hsl-stack/bin" ]]; then
+    IPOPT_BIN_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt-hsl-stack/bin"
+  else
+    IPOPT_BIN_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt/bin"
+  fi
 fi
 IPOPT_LIB_DIR="${IPOPT_LIB_DIR:-}"
 if [[ -z "${IPOPT_LIB_DIR}" && -n "${DEFAULT_SCRATCH_ROOT}" ]]; then
-  IPOPT_LIB_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt/lib"
+  if [[ -d "${DEFAULT_SCRATCH_ROOT}/opt/ipopt-hsl-stack/lib" ]]; then
+    IPOPT_LIB_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt-hsl-stack/lib"
+  else
+    IPOPT_LIB_DIR="${DEFAULT_SCRATCH_ROOT}/opt/ipopt/lib"
+  fi
 fi
 OPENBLAS_LIBDIR="${OPENBLAS_LIBDIR:-/usr/local/pace-apps/manual/packages/fenics/2018/linux-rhel9-cascadelake/gcc-9.4.0/openblas-0.3.28-cg7h4gbbmohnlrdesf4ykgipgza67why/lib}"
+SMB_HSL_LIB="${SMB_HSL_LIB:-${IPOPT_LIB_DIR}/libcoinhsl.so}"
 
 if [[ -n "${IPOPT_BIN_DIR}" && -d "${IPOPT_BIN_DIR}" ]]; then
   export PATH="${IPOPT_BIN_DIR}:${PATH}"
@@ -146,9 +155,9 @@ fi
 SMB_STAGE="${SMB_STAGE:-solver-check}"
 SMB_RUN_NAME="${SMB_RUN_NAME:-${SMB_STAGE}}"
 SMB_SOLVER_NAME="${SMB_SOLVER_NAME:-auto}"
-SMB_LINEAR_SOLVER="${SMB_LINEAR_SOLVER:-}"
+SMB_LINEAR_SOLVER="${SMB_LINEAR_SOLVER:-ma97}"
 SMB_NC="${SMB_NC:-1,2,3,2}"
-SMB_NC_LIBRARY="${SMB_NC_LIBRARY:-1,2,3,2;2,2,2,2}"
+SMB_NC_LIBRARY="${SMB_NC_LIBRARY:-${SMB_NC}}"
 SMB_F1="${SMB_F1:-2.2}"
 SMB_FDES="${SMB_FDES:-1.2}"
 SMB_FEX="${SMB_FEX:-0.9}"
@@ -179,6 +188,21 @@ SMB_WATER_MAX_EX_WT="${SMB_WATER_MAX_EX_WT:-0.05}"
 SMB_WATER_MAX_ZONE1_ENTRY_WT="${SMB_WATER_MAX_ZONE1_ENTRY_WT:-0.01}"
 SMB_SEED_LIBRARY="${SMB_SEED_LIBRARY:-notebook}"
 SMB_STAGE_TEE="${SMB_STAGE_TEE:-1}"  # Default ON: IPOPT iterations appear in .out file
+SMB_IPOPT_WORKERS="${SMB_IPOPT_WORKERS:-1}"
+SMB_IPOPT_THREADS_PER_WORKER="${SMB_IPOPT_THREADS_PER_WORKER:-${SLURM_CPUS_PER_TASK:-4}}"
+
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
+export OMP_DYNAMIC="${OMP_DYNAMIC:-FALSE}"
+export OMP_PROC_BIND="${OMP_PROC_BIND:-spread}"
+export OMP_PLACES="${OMP_PLACES:-cores}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+export SMB_IPOPT_WORKERS
+export SMB_IPOPT_THREADS_PER_WORKER
+if [[ -f "${SMB_HSL_LIB}" ]]; then
+  export SMB_HSL_LIB
+fi
 
 STAGE_ARGS=(
   --stage "${SMB_STAGE}"
@@ -238,8 +262,11 @@ echo "IPOPT_LIB_DIR: ${IPOPT_LIB_DIR:-<unset>}"
 echo "OPENBLAS_LIBDIR: ${OPENBLAS_LIBDIR:-<unset>}"
 echo "Stage: ${SMB_STAGE}"
 echo "Run name: ${SMB_RUN_NAME}"
-echo "CPUs per task: ${SLURM_CPUS_PER_TASK:-12}"
+echo "CPUs per task: ${SLURM_CPUS_PER_TASK:-4}"
 echo "Artifact dir: ${ARTIFACT_DIR}"
+echo "Linear solver: ${SMB_LINEAR_SOLVER}"
+echo "SMB_HSL_LIB: ${SMB_HSL_LIB:-<unset>}"
+echo "IPOPT workers: ${SMB_IPOPT_WORKERS} x ${SMB_IPOPT_THREADS_PER_WORKER} thread(s)"
 echo "nc: ${SMB_NC}"
 echo "nc library: ${SMB_NC_LIBRARY}"
 echo "flows: Ffeed=${SMB_FFEED}, F1=${SMB_F1}, Fdes=${SMB_FDES}, Fex=${SMB_FEX}, tstep=${SMB_TSTEP}"
@@ -249,6 +276,7 @@ echo "seed library: ${SMB_SEED_LIBRARY}"
 echo "fidelity: nfex=${SMB_NFEX}, nfet=${SMB_NFET}, ncp=${SMB_NCP}"
 
 cd "${REPO_ROOT}"
-"${VENV_PY}" "${AUTORESEARCH_ROOT}/benchmarks/run_stage.py" "${STAGE_ARGS[@]}"
+cd "${AUTORESEARCH_ROOT}"
+"${VENV_PY}" -m benchmarks.run_stage "${STAGE_ARGS[@]}"
 
 echo "[$(date '+%F %T')] SMB stage runner complete."

@@ -2,7 +2,9 @@
 """
 Phase 3 Comparative Evaluation Orchestrator
 
-Runs all three NC selection strategies using the revised publication plan:
+This is the canonical current Phase 3 entrypoint.
+
+Runs the revised 3-strategy benchmark family:
   1. Wait for Phase 2 data
   2. Run Strategy A: Heuristic baseline
   3. Run Strategy B: Bayesian Optimization + GP
@@ -24,6 +26,19 @@ import numpy as np
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "src"))
+
+from benchmarks.artifact_contract import (
+    PHASE2_ARTIFACT_DIR,
+    PHASE2_REFERENCE_CANONICAL,
+    PHASE2_REFERENCE_LEGACY_COMPAT,
+    PHASE2_REFERENCE_RAW_GLOB,
+    PHASE3_FINALIST_DIR,
+    PHASE3_PROMOTION_DIR,
+    PHASE3_RESULTS_DIR,
+    PHASE3_STUDY_SUMMARY,
+    contract_metadata,
+    phase3_selection_path,
+)
 
 
 def run_strategy_selection(strategy_script: str) -> bool:
@@ -62,12 +77,7 @@ def run_strategy_selection(strategy_script: str) -> bool:
 
 def load_strategy_results(strategy_name: str) -> Optional[Dict]:
     """Load saved strategy selection results."""
-    result_file = (
-        REPO_ROOT
-        / "artifacts"
-        / "phase3_results"
-        / f"{strategy_name}_selection.json"
-    )
+    result_file = phase3_selection_path(strategy_name.rsplit("_", 1)[1])
 
     if not result_file.exists():
         print(f"⚠ Strategy results not found: {result_file}")
@@ -100,6 +110,8 @@ def run_high_fidelity_optimization(
         artifact_dir,
         "--nc",
         nc_str,
+        "--nc-library",
+        nc_str,
         "--solver-name",
         "auto",
         "--linear-solver",
@@ -111,7 +123,7 @@ def run_high_fidelity_optimization(
         "--ncp",
         "2",
         "--purity-min",
-        "0.60",
+        "0.30",
         "--recovery-ga-min",
         "0.75",
         "--recovery-ma-min",
@@ -198,7 +210,7 @@ def run_promotion_stage(strategy_results: Dict, strategy_name: str) -> List[Dict
             nc,
             strategy_name,
             run_label="promote",
-            artifact_dir="artifacts/phase3_validation/promotions",
+            artifact_dir=str(PHASE3_PROMOTION_DIR.relative_to(REPO_ROOT)),
         )
         results.append(result)
 
@@ -236,7 +248,7 @@ def run_finalist_robustness(finalist_result: Dict, strategy_name: str) -> List[D
             nc,
             strategy_name,
             run_label=run_label,
-            artifact_dir="artifacts/phase3_validation/finalists",
+            artifact_dir=str(PHASE3_FINALIST_DIR.relative_to(REPO_ROOT)),
         )
         results.append(result)
 
@@ -334,6 +346,7 @@ def generate_summary_report(
     output = {
         "phase": "3_comparative",
         "plan": "revised_publication_plan",
+        "artifact_contract": contract_metadata(),
         "strategies": strategy_results,
         "promotion_results": promotion_results,
         "finalist_results": finalist_results,
@@ -341,7 +354,7 @@ def generate_summary_report(
         "statistics": statistics,
     }
 
-    output_file = REPO_ROOT / "artifacts" / "phase3_results" / "study_summary.json"
+    output_file = PHASE3_STUDY_SUMMARY
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_file, "w") as handle:
@@ -356,18 +369,19 @@ def main() -> int:
     print("PHASE 3 COMPARATIVE STUDY ORCHESTRATOR")
     print(f"{'=' * 70}")
 
-    phase2_dir = REPO_ROOT / "artifacts" / "phase2_lhs_seeding"
+    phase2_dir = PHASE2_ARTIFACT_DIR
+    has_canonical = PHASE2_REFERENCE_CANONICAL.exists() or PHASE2_REFERENCE_LEGACY_COMPAT.exists()
     has_legacy = (phase2_dir / "phase2_summary.json").exists()
-    has_reference = any(phase2_dir.glob("reference-eval.*.phase2_ref_nc_*.json"))
+    has_reference = any(phase2_dir.glob(PHASE2_REFERENCE_RAW_GLOB))
 
-    if not (has_legacy or has_reference):
+    if not (has_canonical or has_legacy or has_reference):
         print(f"\n⏳ Waiting for Phase 2 data under: {phase2_dir}")
-        print("   (Need either legacy phase2_summary.json or raw reference-eval seed artifacts)")
+        print("   (Need canonical phase2_reference_canonical.json, legacy phase2_summary.json, or raw reference-eval seed artifacts)")
         return 1
 
     print(f"✓ Phase 2 data source found under: {phase2_dir}")
 
-    output_dir = REPO_ROOT / "artifacts" / "phase3_results"
+    output_dir = PHASE3_RESULTS_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'=' * 70}")

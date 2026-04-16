@@ -1,6 +1,6 @@
 # PLAN.md
 
-_Last reconciled: 2026-04-13 16:10 EDT_
+_Last reconciled: 2026-04-13 18:05 EDT_
 
 This file is the **single authoritative live plan** for AutoResearch-SMB.
 
@@ -9,356 +9,332 @@ If other planning or status documents conflict with this one:
 - treat older plan/status notes as archive or supporting context unless they are explicitly reconciled here
 
 Related navigation:
-- `CURRENT_STATUS.md` — short current summary
+- `docs/status/CURRENT_STATUS.md` — short current summary
 - `docs/DOCUMENTATION_INDEX.md` — document priority guide
 - `docs/ARCHITECTURE_AND_STATUS.md` — architecture and framing map
 
 ## Executive summary
 
-This project is an SMB optimization pipeline aimed at comparing strategy quality for NC selection and downstream high-fidelity validation.
+The project should be framed as **agent-orchestrated optimization for expensive SMB evaluations**.
 
-The current working plan is:
+The bottleneck is not only solving a nonlinear program. The harder problem is deciding:
+- which expensive simulation or experiment to pay for next
+- which fidelity level to use
+- whether the next round should explore, exploit, verify, or diagnose
 
-1. **Build Phase 2 foundation/reference data** across many NCs and seeds.
-2. **Use that Phase 2 data in Phase 3** to compare multiple selection strategies.
-3. **Run Phase 4/final validation** on the winning strategy/configuration under stricter requirements.
+The numerical optimizer remains the optimizer. IPOPT and related solver tooling do the mathematical search. The agent layer should remain narrow, benchmarkable, and policy-oriented.
 
-At the moment, the repo contains **multiple historical Phase 2 variants**. The currently running production job is a **reference-evaluation Phase 2 variant**, while some markdown files still describe earlier or alternate low-fidelity optimize-all-seeds plans.
+The next milestone sequence is:
 
----
+1. **Cleanup baseline** — largely complete
+2. **Real literature layer**
+3. **Canonical benchmark contract**
+4. **Cost-aware mixed-space BO baseline**
+5. **BO→IPOPT hybrid**
+6. **Agent chooses evaluation purpose and fidelity**
 
-## Source-of-truth status right now
+## Current state
 
-### Active running job
+### What is already in good shape
 
-**Current Slurm job:** `6289854`
-- **Name:** `smb-phase2-ref`
-- **Script:** `slurm/pace_smb_phase2_reference_eval.slurm`
-- **Work dir:** `/storage/home/hcoda1/4/qtran47/AutoResearch-SMB`
-- **Stdout:** `logs/smb-phase2-ref-6289854.out`
-- **Artifacts dir:** `artifacts/phase2_lhs_seeding`
+- `src/sembasmb/` contains the real SMB model and solver stack
+- `benchmarks/` contains benchmark, BO, and agent orchestration code
+- `tests/` exists and the packaging remains lightweight and coherent
+- stale status docs have been archived under `docs/archive/status/`
+- duplicate local-command notes in `slurm/` were removed
+- old artifact trees were archived out of the live repo
+- `scripts/archive_stale_artifacts.sh` now supports routine artifact cleanup
 
-### What this job is doing
+### What is still unresolved
 
-This is **Phase 2 reference evaluation with 5D LHS sampling**, not full optimize-layouts screening.
+- the repo still has **two competing Phase 3 stories**
+  - a 3-strategy A/B/C design in study docs and execution scripts
+  - a 4-strategy design in roadmap-style docs and some benchmark code
+- the current reference-eval Phase 2 artifact format is not yet the canonical input contract for downstream strategy comparison
+- the literature/research layer is still missing as a first-class, curated deliverable
+- the benchmark story is still stronger than the explicit artifact-to-claim chain
 
-- **32 NCs**
-- **25 seeds per NC**
-- **800 total reference evaluations**
-- Fixed-flow `reference-eval` stage
-- Medium fidelity: `nfex=6`, `nfet=3`, `ncp=1`
-- Relaxed constraints:
-  - purity >= 0.05
-  - recovery_GA >= 0.10
-  - recovery_MA >= 0.15
-- Parallel layout:
-  - `12` workers
-  - `2` OMP threads per worker
-  - `24` CPUs total
+### What should no longer be treated as the main blocker
 
-### Observed progress
+Basic repo hygiene is no longer the primary problem. The live problem is now:
 
-From the live log, job `6289854` had completed a large block of NCs and was in the middle of:
-- **NC `[1,2,2,3]`**
-- with visible progress at **10/25 seeds** when checked
+**benchmark and roadmap canonicalization**
 
-So the run is clearly active and producing per-seed JSON artifacts.
+That means:
+- locking the method vocabulary
+- locking the artifact schema used for comparisons
+- aligning docs, code, and publication-facing claims
 
----
+## Core objectives
 
-## Current pipeline plan
+### 1. Canonical framing
 
-## Phase 2: Foundation data generation
+Keep the repo, paper, and benchmark language aligned around:
 
-### Current intent
+> The agent does not replace numerical optimization; it allocates optimization effort and experimental budget more intelligently across rounds.
 
-Generate broad NC/seed coverage so later strategy comparison is based on shared data instead of one-off intuition.
+This means:
+- no “LLM is the optimizer” framing
+- no claim of global optimality from LLM reasoning
+- explicit separation of solver responsibilities and policy responsibilities
 
-### Current practical reality
+### 2. Canonical benchmark contract
 
-There are **two distinct Phase 2 styles** in the repo:
+Define one benchmark contract that states:
+- what the candidate representation is
+- what objective is optimized
+- how feasibility is modeled
+- how evaluation cost is modeled
+- which artifact files are authoritative for each stage
+- which strategy family is canonical
 
-#### A. Older / alternate Phase 2 style: low-fidelity optimize-all-seeds
-Described in several older status docs.
+Until this is done, benchmark conclusions should be treated as promising but not fully canonical.
 
-Characteristics:
-- 100 seeds per NC
-- low fidelity (`nfex=4`, `nfet=2`, `ncp=1`)
-- optimize-layouts / screening style
-- intended output: `artifacts/phase2_lhs_seeding/phase2_summary.json`
+### 3. Real research layer
 
-Status:
-- historically important
-- partially implemented / previously run
-- associated docs contain stale job IDs and inconsistent runtime expectations
-- current `phase2_summary.json` in artifacts exists but is **not currently a reliable representation of the live production run**
+Build a durable literature layer that supports the “intelligence per round” thesis and the mixed expensive optimization roadmap.
 
-#### B. Current production-style Phase 2: reference evaluation
-**This is what is running right now.**
+Required structure:
+- `RESEARCH.md` — top-level research entry point
+- `docs/research/index.md` — organized literature map
+- `docs/research/papers/<slug>.md` — one summary per source
 
-Characteristics:
-- 25 seeds per NC
-- medium fidelity (`nfex=6`, `nfet=3`, `ncp=1`)
-- fixed-flow reference evaluation
-- per-seed JSON outputs named like:
-  - `reference-eval.<jobid>.phase2_ref_nc_[... ]_seed_<k>.json`
-- aggregate output expected:
-  - `artifacts/phase2_lhs_seeding/phase2_reference_summary.json`
+Required literature bins:
+- classical NLP/MINLP baselines
+- constrained and mixed BO
+- multi-fidelity and cost-aware optimization
+- BO + local NLP hybrids
+- autonomous-lab and scientific-agent systems
 
-### What to treat as the current Phase 2 target
+Each paper summary should use one rigid template:
+- citation
+- problem setting
+- method
+- assumptions
+- constraint handling
+- mixed-variable handling
+- expensive-data handling
+- empirical evidence
+- direct relevance to this repo
+- implementation takeaways
+- limitations
+
+### 4. Forward technical roadmap
+
+The technical core should evolve toward:
+
+**mixed, constrained, cost-aware, multi-fidelity BO feeding local refinement**
+
+not:
+
+**ask an LLM for the next point**
+
+The candidate abstraction should be:
+- `(discrete layout, continuous controls, fidelity level)`
+
+The modeled outputs should be:
+- objective
+- feasibility / constraint satisfaction
+- evaluation cost
+
+### 5. Narrow, benchmarkable agent role
+
+The agent should not free-form emit final process settings as the primary method.
+
+The canonical agent role should be:
+- rank candidate batches proposed by BO, heuristics, or local search
+- decide whether the next round is `EXPLORE`, `EXPLOIT`, `VERIFY`, or `DIAGNOSE`
+- choose the next evaluation fidelity
+- write a structured rationale covering:
+  - expected objective gain
+  - feasibility learning
+  - uncertainty reduction
+  - diagnostic value
+  - expected cost
 
-**Treat the reference-evaluation variant as the active Phase 2 plan unless deliberately superseded.**
+## Canonical comparison ladder
 
-Why:
-- it is the actual live job
-- it is producing artifacts now
-- it avoids some of the earlier feasibility / timeout / empty-summary problems seen in older Phase 2 runs
+The forward method ladder should be:
 
----
+1. **IPOPT multi-start on fixed layouts**
+2. **Direct MINLP where tractable**
+3. **Constrained mixed-space BO baseline**
+4. **BO→IPOPT hybrid**
+5. **Agent-guided BO or agent-guided BO→IPOPT**
 
-## Phase 3: Strategy comparison
+Interpretation:
+- Step 1 establishes the local continuous optimization baseline
+- Step 2 tests whether tractable mixed-integer solvers can compete on reduced instances
+- Step 3 adds mixed categorical/continuous surrogate optimization
+- Step 4 adds local continuous refinement after BO proposes a promising candidate
+- Step 5 adds a narrow policy layer that decides evaluation purpose and fidelity
 
-### Goal
+## Roadmap
 
-Compare multiple ways of selecting promising NCs using shared Phase 2 data.
+### Phase A — Cleanup baseline and canonical vocabulary
 
-### Intended strategy family
+Status: **mostly complete**
 
-The repo consistently points toward comparing variants such as:
+Done:
+- archive stale status docs instead of deleting aggressively
+- reduce root clutter
+- remove duplicate local-command notes
+- move old artifacts out of the live repo
 
-1. **Regular / heuristic baseline**
-2. **BO baseline**
-3. **Agent + LHS / domain reasoning**
-4. **Agent + multi-BO**
+Still required:
+- choose the canonical Phase 3 strategy family
+- unify names across docs, scripts, and benchmark outputs
+- treat `research.md` as a run log, not as the literature layer
 
-### High-level hypothesis
+### Phase B — Literature and research layer
 
-The expected winner in the design docs is:
-- **Agent + Multi-BO**
+Status: **not started**
 
-Reasoning in the docs:
-- combine statistical surrogates with agent/domain reasoning
-- balance exploitation and exploration
-- outperform pure heuristic ranking and single-model BO
+Deliverables:
+- `RESEARCH.md`
+- `docs/research/index.md`
+- `docs/research/papers/<slug>.md`
 
-### Current implementation state
+Minimum source set should include:
+- IPOPT and Wächter–Biegler
+- BONMIN
+- COUENNE
+- SCIP
+- constrained BO references
+- multi-fidelity BO references
+- TuRBO
+- CoCaBO
+- MIVABO
+- BoTorch mixed-space modeling docs
+- at least one BO-IPOPT hybrid paper
+- constrained BO for hybrid / grey-box models
+- A-Lab
+- Coscientist
+- at least one recent LLM-agent lab paper
+- cost-constrained BO
+- adaptive surrogate experimental design
+- Bayesian experimental design for expensive experiments
 
-Phase 3 code appears to be substantially implemented in the repo, but execution readiness depends on Phase 2 data being in the format expected by the evaluators.
+### Phase C — Canonical benchmark contract
 
-Important caveat:
-- Some Phase 3 docs assume `phase2_summary.json` contains dense seed-level optimization results.
-- The currently running job is instead generating **reference-eval seed artifacts** and a different aggregate summary.
+Status: **not complete**
 
-So before Phase 3 runs cleanly, the project needs one of:
-1. Phase 3 readers updated to consume the reference-eval output format, or
-2. a conversion/aggregation step that turns current reference-eval outputs into the Phase 3 input schema.
+Required decisions:
+- choose the canonical strategy set:
+  - either 3-strategy `A/B/C`
+  - or 4-strategy `heuristic / BO / Agent+LHS / Agent+Multi-BO`
+- decide the canonical Phase 2 artifact contract
+- decide whether Phase 3 reads current reference-eval outputs directly or via a converter
+- define publication-safe metrics and artifact mappings
 
----
+Required benchmark metrics:
+- best feasible objective vs cumulative cost
+- time to first feasible point
+- feasibility rate
+- regret or gap to best-known
+- promotion efficiency from cheap to expensive fidelity
 
-## Phase 4: Final validation
+The benchmark protocol should be **budget-normalized**, not merely iteration-matched.
 
-### Goal
+### Phase D — Cost-aware mixed-space BO baseline
 
-Take the best strategy / best NC candidates and validate them at stricter or more production-like conditions.
+Status: **planned**
 
-Typical intent across the docs:
-- run higher-fidelity or stricter-constraint validation
-- verify that the strategy winner remains best under final conditions
-- use this as the publication / final-results stage
+Deliverable:
+- a constrained mixed-space BO baseline that treats layout, controls, and fidelity explicitly
 
-This phase is conceptually stable across documents, even though exact thresholds vary between files.
+Requirements:
+- model objective separately from feasibility and cost
+- use the candidate abstraction `(layout, controls, fidelity)`
+- make the acquisition rule cost-aware when possible
+- benchmark directly against heuristic and IPOPT baselines
 
----
+### Phase E — BO→IPOPT hybrid
 
-## What is outdated vs still useful
+Status: **planned**
 
-This section is normative: unless a file is listed as primary here or reconciled later into this plan, it should not override `PLAN.md`.
+Deliverable:
+- a hybrid method where BO proposes promising mixed candidates and IPOPT performs local continuous refinement
 
-## Outdated or partially outdated docs
+Why this is the next serious technical step:
+- it matches the structure of the problem
+- it is better grounded in the optimization literature than free-form agent proposals
+- it yields a clean ablation path against both BO-only and IPOPT-only baselines
 
-### `LIVE_STATUS.md`
-Useful historically, but stale.
+### Phase F — Agent-guided evaluation policy
 
-Why outdated:
-- references old job `6280391`
-- assumes auto-submission timeline that no longer matches the current live run
-- describes a different Phase 2 execution mode
+Status: **planned**
 
-### `PHASE2_STATUS.md`
-Useful as an archive of an older production run, but not current truth.
+Deliverable:
+- a narrow policy layer on top of the hybrid stack
 
-Why outdated:
-- tied to old job `6282883`
-- describes 100-seed low-fidelity optimize-all-seeds behavior
-- does not reflect current `6289854` reference-eval job
+The agent should decide:
+- whether the round is explore / exploit / verify / diagnose
+- which fidelity to run next
+- which candidate batch is worth paying for next
 
-### `PHASE2_FINAL_CONFIG.md`
-Useful historical configuration note, but no longer the active plan.
+The agent should **not** be evaluated as a black-box generator of final process settings.
 
-Why outdated:
-- tied to old job `6282213`
-- assumes 3,100-seed optimize-all-seeds run
-- runtime math in the file conflicts internally with later operational reality
+### Phase G — Publication package
 
-### `PHASE2_OPTIONS_GUIDE.md` / `PHASE2_FEASIBILITY_ISSUE.md` / `PHASE2_SCALING_STRATEGY.md`
-Useful as recovery history and design rationale.
+Status: **planned**
 
-Why only partially current:
-- they explain why earlier Phase 2 variants struggled
-- they document useful tradeoffs
-- but they are not the current live execution plan
+Deliverables:
+- one publication-safe benchmark summary
+- one artifact-to-claim traceability map
+- reconciled methods text
+- contribution statement tied to the actual implemented comparison ladder
 
-## Still useful / conceptually current docs
+## Current operational context
 
-### `PHASE_PIPELINE_V2.md`
-Best high-level description of the intended scientific workflow.
+### Active Phase 2 data source
 
-What remains useful:
-- Phase 2 → Phase 3 → Phase 4 structure
-- idea of shared Phase 2 data feeding strategy comparison
-- emphasis on comparing multiple methods fairly
+The currently visible live operational context is still the reference-evaluation workflow centered on:
+- `slurm/pace_smb_phase2_reference_eval.slurm`
+- `artifacts/phase2_lhs_seeding/phase2_reference_summary.json`
 
-### `IMPLEMENTATION_ROADMAP.md`
-Useful for how Agent + BO is supposed to work conceptually.
+This remains useful operational evidence.
 
-What remains useful:
-- the reasoning logic for strategy comparison
-- expected role of BO, domain knowledge, and exploration
+But it should no longer be mistaken for the whole project roadmap.
 
-### `PHASE3_IMPLEMENTATION_STATUS.md`
-Useful snapshot of strategy implementation readiness.
+### How to interpret the current Phase 2 outputs
 
-Caveat:
-- some details assume an older Phase 2 input schema
+Use the current reference-eval outputs as:
+- empirical evidence that the repo runs real expensive SMB evaluations
+- a candidate seed dataset for later comparison work
+- a schema-reconciliation problem that must be solved before canonical Phase 3 benchmarking
 
-### `OPTIMIZATION_STATUS.md`
-Useful for agent-loop performance and robustness improvements.
+Do **not** assume that the current `phase2_reference_summary.json` alone fully defines the final benchmark contract.
 
-Caveat:
-- this is more about agent/runtime optimization than the core current Phase 2 production run
+## Immediate next actions
 
----
+1. Lock the canonical Phase 3 strategy family and naming.
+2. Define the canonical artifact contract from Phase 2 into Phase 3.
+3. Create the literature layer (`RESEARCH.md`, `docs/research/index.md`, paper summaries).
+4. Implement the constrained mixed-space BO baseline around `(layout, controls, fidelity)`.
+5. Define the BO→IPOPT hybrid interface and evaluation protocol.
+6. Restrict the agent role to evaluation-purpose and fidelity choice, then benchmark it.
 
-## Current artifact reality
+## Files that should be treated as primary
 
-## What exists now
+- `PLAN.md` ← single authoritative live plan
+- `docs/status/CURRENT_STATUS.md`
+- `docs/DOCUMENTATION_INDEX.md`
+- `docs/ARCHITECTURE_AND_STATUS.md`
+- `README.md`
+- `agents/Objectives.md`
+- `docs/benchmarks/BENCHMARK_EVIDENCE_STATUS.md`
 
-Inside `artifacts/phase2_lhs_seeding` there is evidence of **multiple historical runs**:
-- older optimize-layouts outputs
-- older reference-eval runs (`6288977`, `6288996`, `6289810`)
-- the active current run (`6289854`)
-- aggregate files including:
-  - `phase2_summary.json`
-  - `phase2_reference_summary.json`
+## Files that should be treated mainly as archive or support
 
-## Important caveat on `phase2_summary.json`
-
-Current quick inspection showed:
-- `results = 10`
-- `nonempty = 0`
-- sample keys:
-  - `best_productivity`
-  - `n_evaluations`
-  - `n_feasible`
-  - `nc`
-
-That means this file is **not yet the rich, final Phase 2 foundation dataset** that many Phase 3 docs assume.
-
-## Better current artifact signal
-
-`phase2_reference_summary.json` is the more relevant aggregate artifact for the current active Phase 2 style.
-
-The many per-seed `reference-eval.*.json` files for job `6289854` are the clearest evidence that the live run is producing usable data.
-
----
-
-## Recommended next steps
-
-### Immediate next step
-
-1. **Let job `6289854` finish** unless there is a strong reason to stop it.
-2. **Treat its outputs as the current Phase 2 baseline dataset.**
-3. **Inspect `phase2_reference_summary.json` after completion** to verify:
-   - number of NCs completed
-   - success / feasible counts
-   - per-NC metrics
-   - whether it is sufficient for strategy comparison directly
-
-### After Phase 2 completes
-
-4. Decide whether to:
-   - **A. use reference-eval output directly for Phase 3**, or
-   - **B. write a converter** from reference-eval outputs to the schema expected by the existing Phase 3 scripts.
-
-### Then
-
-5. Run / validate the Phase 3 strategy comparison on the reconciled Phase 2 dataset.
-6. Promote the best candidate(s) to final validation.
-
----
-
-## Operational plan going forward
-
-## Canonical workflow
-
-### Step 1 — Finish current Phase 2 reference run
-- Job: `6289854`
-- Output target: `artifacts/phase2_lhs_seeding/phase2_reference_summary.json`
-
-### Step 2 — Consolidate Phase 2 outputs
-- cleanly identify the final aggregate artifact from the active run
-- avoid mixing old job outputs with new ones
-- if needed, archive old Phase 2 summaries separately
-
-### Step 3 — Adapt Phase 3 input expectations
-- either update evaluation scripts to read reference-eval summaries
-- or generate a normalized `phase2_summary.json` from reference outputs
-
-### Step 4 — Run strategy comparison
-- baseline heuristic
-- BO baseline
-- Agent + LHS/domain
-- Agent + multi-BO
-
-### Step 5 — Final validation
-- validate winning strategy / NC candidates at strict settings
-
----
+- `docs/archive/status/LIVE_STATUS.md`
+- `docs/archive/status/PHASE2_STATUS.md`
+- `docs/archive/status/PHASE2_FINAL_CONFIG.md`
+- `docs/archive/status/PHASE2_FEASIBILITY_ISSUE.md`
+- `docs/archive/status/PHASE2_SCALING_STRATEGY.md`
+- `docs/phases/PHASE2_OPTIONS_GUIDE.md`
+- `research.md` ← currently a run log / working note, not the canonical literature layer
 
 ## Clean project truth in one sentence
 
-**The project is currently in Phase 2, and the real live plan is a medium-fidelity LHS-based reference evaluation run (`6289854`) whose outputs should become the foundation dataset for later multi-strategy NC selection and final validation.**
-
----
-
-## Files that should now be treated as primary
-
-- `PLAN.md` ← single authoritative live plan
-- `CURRENT_STATUS.md`
-- `docs/DOCUMENTATION_INDEX.md`
-- `docs/ARCHITECTURE_AND_STATUS.md`
-- `slurm/pace_smb_phase2_reference_eval.slurm`
-- `artifacts/phase2_lhs_seeding/phase2_reference_summary.json`
-- `logs/smb-phase2-ref-6289854.out`
-
-## Files that should be treated mainly as archive/history
-
-- `LIVE_STATUS.md`
-- `PHASE2_STATUS.md`
-- `PHASE2_FINAL_CONFIG.md`
-- `PHASE2_OPTIONS_GUIDE.md`
-- `PHASE2_FEASIBILITY_ISSUE.md`
-- `PHASE2_SCALING_STRATEGY.md`
-
----
-
-## Git / repo note
-
-Remote:
-- `https://github.com/quyenxtran/Agent-Driven-NLP-Optimizer.git`
-
-Local status when this plan was reconciled:
-- branch `main`
-- ahead of origin by `19` commits
-
-That means the working tree/repo state on the machine is likely the most current source of truth, even if GitHub and markdown docs are not perfectly synchronized.
+**AutoResearch-SMB should now be treated as a project for cost-aware, mixed, expensive SMB optimization where the agent’s job is to allocate evaluation budget intelligently on top of solver and surrogate methods, not to replace the optimizer itself.**

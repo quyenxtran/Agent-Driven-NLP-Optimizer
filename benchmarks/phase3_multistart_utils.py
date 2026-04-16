@@ -77,6 +77,8 @@ def run_high_fidelity_once(
         artifact_dir,
         "--nc",
         nc_str,
+        "--nc-library",
+        nc_str,
         "--solver-name",
         "auto",
         "--linear-solver",
